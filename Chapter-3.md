@@ -638,9 +638,9 @@ val p' : printable_colored_point = <obj>
 (10, red)- : unit = ()
 ```
 
-隐藏在父类里面的私有方法是不可见的，这样它也不会被重载。因为初始化方法也是作为私有方法存在，所有的私有方法会按照继承顺序执行。
+隐藏在父类里面的私有方法是不可见的，这样它也不会被重写。因为初始化方法也是作为私有方法存在，所有的私有方法会按照继承顺序执行。
 
-需要注意的是，为了使逻辑清晰，被重载的方法必须用!标志标记，如果之前没有定义过这个方法，那么会导致错误。
+需要注意的是，为了使逻辑清晰，被重写的方法必须用!标志标记，如果之前没有定义过这个方法，那么会导致错误。
 
 ```ocaml
 #   object
@@ -649,7 +649,7 @@ val p' : printable_colored_point = <obj>
 Error: The method `m' has no previous definition
 ```
 
-这种明确重载也可以使用在继承和值上：
+这种明确重写也可以使用在继承和值上：
 
 ```ocaml
 # class another_printable_colored_point y c c' =
@@ -1202,64 +1202,53 @@ class c : object method m : int end
 
 通过使用一个额外的类型变量来捕捉对象开放类型。
 
-## 3.13  Functional objects
+## 3.13 功能性对象
 
-It is possible to write a version of class point without assignments on the instance variables. The override construct {< ... >} returns a copy of “self” (that is, the current object), possibly changing the value of some instance variables.
+我们可以写一个没有带有实例变量绑定的point类。通过使用重写结构{< ... >} 返回一个self，这样可以改变一些对象变量的值：
 
-```
- class functional_point y =
+```ocaml
+# class functional_point y =
     object
       val x = y
       method get_x = x
       method move d = {< x = x + d >}
     end;;
-
 class functional_point :
   int ->
   object ('a) val x : int method get_x : int method move : int -> 'a end
-
 ```
 
-```
- let p = new functional_point 7;;
-
+```ocaml
+# let p = new functional_point 7;;
 val p : functional_point = <obj>
-
 ```
 
-```
- p#get_x;;
-
+```ocaml
+# p#get_x;;
 - : int = 7
-
 ```
 
-```
- (p#move 3)#get_x;;
-
+```ocaml
+# (p#move 3)#get_x;;
 - : int = 10
-
 ```
 
-```
- p#get_x;;
-
+```ocaml
+# p#get_x;;
 - : int = 7
-
 ```
 
-Note that the type abbreviation functional_point is recursive, which can be seen in the class type of functional_point: the type of self is 'a and 'a appears inside the type of the method move.
+需要注意的是functional_point类型缩略是递归的，因为self 的类型是'a而'，a在方法move中出现了。
 
-The above definition of functional_point is not equivalent to the following:
+上面的functional_point定义和下面这个是不等价的：
 
-```
- class bad_functional_point y =
+```ocaml
+# class bad_functional_point y =
     object
       val x = y
       method get_x = x
       method move d = new bad_functional_point (x+d)
     end;;
-
 class bad_functional_point :
   int ->
   object
@@ -1267,12 +1256,11 @@ class bad_functional_point :
     method get_x : int
     method move : int -> bad_functional_point
   end
-
 ```
 
-While objects of either class will behave the same, objects of their subclasses will be different. In a subclass of bad_functional_point, the method move will keep returning an object of the parent class. On the contrary, in a subclass of functional_point, the method move will return an object of the subclass.
+即使一些类的对象会有相同的表现，但是他们的子类的对象也会不同。在子类bad_functional_point中，move方法依然会返回父类的对象。相反的是， functional_point的子类中，move方法将会返回子类的对象。
 
-Functional update is often used in conjunction with binary methods as illustrated in section [6.2.1](https://caml.inria.fr/pub/docs/manual-ocaml/advexamples.html#module%3Astring).
+功能性更新一般会用于结合两个方法（如同在6.2.1中描述的那样）。
 
 ## 3.14  Cloning objects
 
