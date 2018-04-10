@@ -1008,251 +1008,199 @@ class multi_poly :
 
 ## 3.12  使用强制转换
 
-Subtyping is never implicit. There are, however, two ways to perform subtyping. The most general construction is fully explicit: both the domain and the codomain of the type coercion must be given.
+子类型在大部分情况下都是不确定的，但是，我们有两种方法来表现子类型。最常见的方法就是，我们给定函数域和函数目标域的强制类型。
 
-子类型是永远都是
+我们已经知道了point和colored point有类型冲突，举个例子来说，他们不能在同一个list里面出现。但是，一个colored point可以强制转换为point：
 
-We have seen that points and colored points have incompatible types. For instance, they cannot be mixed in the same list. However, a colored point can be coerced to a point, hiding its color method:
-
-```
- let colored_point_to_point cp = (cp : colored_point :> point);;
-
+```Ocaml
+# let colored_point_to_point cp = (cp : colored_point :> point);;
 val colored_point_to_point : colored_point -> point = <fun>
-
 ```
 
-```
- let p = new point 3 and q = new colored_point 4 "blue";;
-
+```Ocaml
+# let p = new point 3 and q = new colored_point 4 "blue";;
 val p : point = <obj>
 val q : colored_point = <obj>
-
 ```
 
-```
- let l = [p; (colored_point_to_point q)];;
-
+```Ocaml
+# let l = [p; (colored_point_to_point q)];;
 val l : point list = [<obj>; <obj>]
-
 ```
 
-An object of type t can be seen as an object of type t' only if t is a subtype of t'. For instance, a point cannot be seen as a colored point.
+一个t类型的对象只有在t是t'的子类型的时候才能被视为t'类型的对象。举个例子来说，一个point不能被视为一个colored point。
 
-```
- (p : point :> colored_point);;
-
+```ocaml
+# (p : point :> colored_point);;
 Error: Type point = < get_offset : int; get_x : int; move : int -> unit >
        is not a subtype of
          colored_point =
            < color : string; get_offset : int; get_x : int;
              move : int -> unit > 
-
 ```
 
-Indeed, narrowing coercions without runtime checks would be unsafe. Runtime type checks might raise exceptions, and they would require the presence of type information at runtime, which is not the case in the OCaml system. For these reasons, there is no such operation available in the language.
+这样不带实时类型检查的类型转换是不安全的。因为在运行时类型检查可能会报错，并且会要求运行时的上下文类型信息来处理错误，但是OCaml 系统中没有这样的设计。因此，我们并不能在语言内进行这样的操作。
 
-Be aware that subtyping and inheritance are not related. Inheritance is a syntactic relation between classes while subtyping is a semantic relation between types. For instance, the class of colored points could have been defined directly, without inheriting from the class of points; the type of colored points would remain unchanged and thus still be a subtype of points.
+需要注意的是，子类型和和继承是没有关系的。继承是类与类之间的关系，而子类型是类型与类型之间的关系。举个例子来讲，colored point类可以直接不用继承point类建立，但是colord point的类型不会因此改变，而且它的类型依然是point的子类型。
 
-The domain of a coercion can often be omitted. For instance, one can define:
+强制类型转换的域常常可以被忽略，就像下面这个例子，我们可以这样定义：
 
-```
- let to_point cp = (cp :> point);;
-
+```ocaml
+# let to_point cp = (cp :> point);;
 val to_point : #point -> point = <fun>
-
 ```
 
-In this case, the function colored_point_to_point is an instance of the function to_point. This is not always true, however. The fully explicit coercion is more precise and is sometimes unavoidable. Consider, for example, the following class:
+在这个例子中，函数colored_point_to_point是函数to_point的一个实例。但是这样的情况不会总是发生。便携更加完整的强制类型转换就不可避免了。考虑下面这个类：
 
-```
- class c0 = object method m = {< >} method n = 0 end;;
-
+```ocaml
+# class c0 = object method m = {< >} method n = 0 end;;
 class c0 : object ('a) method m : 'a method n : int end
-
 ```
 
-The object type c0 is an abbreviation for <m : 'a; n : int> as 'a. Consider now the type declaration:
+对象类型c0是对类型<m : 'a; n : int> 的简写。考虑以下的类型声明：
 
-```
- class type c1 =  object method m : c1 end;;
-
+```ocaml
+# class type c1 =  object method m : c1 end;;
 class type c1 = object method m : c1 end
-
 ```
 
-The object type c1 is an abbreviation for the type <m : 'a> as 'a. The coercion from an object of type c0 to an object of type c1 is correct:
+对象类型c1是对类型 <m : 'a> 的简写，c0到c1的强制类型转换是正确的：
 
-```
- fun (x:c0) -> (x : c0 :> c1);;
-
+```o cam l
+# fun (x:c0) -> (x : c0 :> c1);;
 - : c0 -> c1 = <fun>
-
 ```
 
-However, the domain of the coercion cannot always be omitted. In that case, the solution is to use the explicit form. Sometimes, a change in the class-type definition can also solve the problem
+但是，强制类型转换域并不能一直被省略。在那种情况下，我们需要书写类型的明确形式。有时，我们也可以通过改变类类型定义来解决问题：
 
-```
- class type c2 = object ('a) method m : 'a end;;
-
+```o cam l
+# class type c2 = object ('a) method m : 'a end;;
 class type c2 = object ('a) method m : 'a end
-
 ```
 
-```
- fun (x:c0) -> (x :> c2);;
-
+```ocaml
+# fun (x:c0) -> (x :> c2);;
 - : c0 -> c2 = <fun>
-
 ```
 
-While class types c1 and c2 are different, both object types c1 and c2 expand to the same object type (same method names and types). Yet, when the domain of a coercion is left implicit and its co-domain is an abbreviation of a known class type, then the class type, rather than the object type, is used to derive the coercion function. This allows leaving the domain implicit in most cases when coercing form a subclass to its superclass. The type of a coercion can always be seen as below:
+在类类型c1和c2是不同的同时，对象类型c1和c2可以被拓展为同样的对象类型（拥有同样的方法和类型）。当强制类型转换域是左包含，而且在其到达域（目标类型集）是一个已知类类型的缩写，那么会优先选择类类型而不是对象类型来作为函数的类型源。这样就使我们可以在大部分情况下忽略强制转换域，直接把子类转换到超类。类型的强制转换如下所示：
 
-```
- let to_c1 x = (x :> c1);;
-
+```ocaml
+# let to_c1 x = (x :> c1);;
 val to_c1 : < m : #c1; .. > -> c1 = <fun>
-
 ```
 
-```
- let to_c2 x = (x :> c2);;
-
+```ocaml
+# let to_c2 x = (x :> c2);;
 val to_c2 : #c2 -> c2 = <fun>
-
 ```
 
-Note the difference between these two coercions: in the case of to_c2, the type #c2 = < m : 'a; .. > as 'a is polymorphically recursive (according to the explicit recursion in the class type of c2); hence the success of applying this coercion to an object of class c0. On the other hand, in the first case, c1 was only expanded and unrolled twice to obtain < m : < m : c1; .. >; .. >(remember #c1 = < m : c1; .. >), without introducing recursion. You may also note that the type of to_c2 is #c2 -> c2 while the type of to_c1 is more general than #c1 -> c1. This is not always true, since there are class types for which some instances of #c are not subtypes of c, as explained in section [3.16](https://caml.inria.fr/pub/docs/manual-ocaml/objectexamples.html#ss%3Abinary-methods). Yet, for parameterless classes the coercion (_ :> c) is always more general than (_ : #c :> c).
+需要注意的是两个类型转换之间的差别：一方面，在to_c2的情况下，#c2 = < m : 'a; .. > 类型是多态递归的（根据在c2类类型中的明确的递归），因此可以成功的接受类c0对象进行强制类型转换。另一方面，在第一种情况中，c1只是被拓展和展开两次来包含< m : < m : c1; .. >; .. >类型，而没有引入递归来定义类型。你也许会注意到 to_c2 的类型是 #c2 -> c2 而 to_c1 的类型是比起#c1 -> c1 却更加广泛。但是这种情况并不会一直发生，因为有些类的#c 的实例并不是c的子类型（在3.16里面有解释）。总的来说，对于无参数类的强制类型转换 (_ :> c)总是比(_ : #c :> c)更加广泛的。
 
-A common problem may occur when one tries to define a coercion to a class c while defining class c. The problem is due to the type abbreviation not being completely defined yet, and so its subtypes are not clearly known. Then, a coercion (_ :> c) or (_ : #c :> c) is taken to be the identity function, as in
+在我们在定义类c的同时定义一个类c强制类型转换的时候普遍会发生一个问题。这个问题是因为类型缩写还没完全定义，所以它的子类型也不是完全清楚的，所以 (_ :> c) 或者 (_ : #c :> c)会被定义为一个函数，如下：
 
 ```
- function x -> (x :> 'a);;
-
+# function x -> (x :> 'a);;
 - : 'a -> 'a = <fun>
-
 ```
 
-As a consequence, if the coercion is applied to self, as in the following example, the type of self is unified with the closed type c (a closed object type is an object type without ellipsis). This would constrain the type of self be closed and is thus rejected. Indeed, the type of self cannot be closed: this would prevent any further extension of the class. Therefore, a type error is generated when the unification of this type with another type would result in a closed object type.
+在下面的例子中，强制类型转换应用到了self上，但是self的类型与闭类型的c（一个对象的闭类型是没有省略的对象类型）不统一，这样会限制self的类型成为闭类型，是不被允许的。实际上，self的是不会成为闭类型的：这样可以阻止未来所有对于类拓展的可能。所以，当两个类型统一后产生了一个对象闭类型的时候，会产生类型错误。
 
-```
- class c = object method m = 1 end
+```ocaml
+# class c = object method m = 1 end
   and d = object (self)
     inherit c
     method n = 2
     method as_c = (self :> c)
   end;;
-
 Error: This expression cannot be coerced to type c = < m : int >; it has type
          < as_c : c; m : int; n : int; .. >
        but is here used with type c
        Self type cannot escape its class
-
 ```
 
-However, the most common instance of this problem, coercing self to its current class, is detected as a special case by the type checker, and properly typed.
+但是，这个问题最通用的实例，把self强制转换为当前类，是一个被类型检查认可的特殊例子，会被正确的赋予类型。
 
-```
- class c = object (self) method m = (self :> c) end;;
-
+```ocaml
+# class c = object (self) method m = (self :> c) end;;
 class c : object method m : c end
-
 ```
 
-This allows the following idiom, keeping a list of all objects belonging to a class or its subclasses:
+这样就允许了下面的用法，用来保存全部类及其子类的对象list：
 
-```
- let all_c = ref [];;
-
+```ocaml
+# let all_c = ref [];;
 val all_c : '_weak3 list ref = {contents = []}
-
 ```
 
-```
- class c (m : int) =
+```ocaml
+# class c (m : int) =
     object (self)
       method m = m
       initializer all_c := (self :> c) :: !all_c
     end;;
-
 class c : int -> object method m : int end
-
 ```
 
-This idiom can in turn be used to retrieve an object whose type has been weakened:
+这个用法也可用来取回一个类型已经被弱化的对象：
 
-```
- let rec lookup_obj obj = function [] -> raise Not_found
+```ocaml
+# let rec lookup_obj obj = function [] -> raise Not_found
     | obj' :: l ->
        if (obj :> < >) = (obj' :> < >) then obj' else lookup_obj obj l ;;
-
 val lookup_obj : < .. > -> (< .. > as 'a) list -> 'a = <fun>
-
 ```
 
-```
- let lookup_c obj = lookup_obj obj !all_c;;
-
+```ocaml
+# let lookup_c obj = lookup_obj obj !all_c;;
 val lookup_c : < .. > -> < m : int > = <fun>
-
 ```
 
-The type < m : int > we see here is just the expansion of c, due to the use of a reference; we have succeeded in getting back an object of type c.
+因为使用了引用，这里我们看到的类型< m : int >只是c的一个拓展，我们成功的得到了一个类型c的对象。
 
-The previous coercion problem can often be avoided by first defining the abbreviation, using a class type:
+之前的强制类型转换问题通常可以通过先使用类类型定义类型缩写来避免：
 
 ```
- class type c' = object method m : int end;;
-
+# class type c' = object method m : int end;;
 class type c' = object method m : int end
-
 ```
 
-```
- class c : c' = object method m = 1 end
+```ocaml
+# class c : c' = object method m = 1 end
   and d = object (self)
     inherit c
     method n = 2
     method as_c = (self :> c')
   end;;
-
 class c : c'
 and d : object method as_c : c' method m : int method n : int end
-
 ```
 
-It is also possible to use a virtual class. Inheriting from this class simultaneously forces all methods of c to have the same type as the methods of c'.
+也可以通过使用虚拟类来解决。继承这个类，同时再强制让所有c的方法类型和c'相同：
 
-```
- class virtual c' = object method virtual m : int end;;
-
+```ocaml
+# class virtual c' = object method virtual m : int end;;
 class virtual c' : object method virtual m : int end
-
 ```
 
-```
- class c = object (self) inherit c' method m = 1 end;;
-
+```ocaml
+# class c = object (self) inherit c' method m = 1 end;;
 class c : object method m : int end
-
 ```
 
-One could think of defining the type abbreviation directly:
+也可以考虑直接定义类型缩略：
 
-```
- type c' = <m : int>;;
-
-
+```ocaml
+# type c' = <m : int>;;
 ```
 
-However, the abbreviation #c' cannot be defined directly in a similar way. It can only be defined by a class or a class-type definition. This is because a #-abbreviation carries an implicit anonymous variable .. that cannot be explicitly named. The closer you get to it is:
+但是，#c'的缩略却不能被简单这样定义。它智能通过类或者类类型来定义。因为 #-缩略 会带有一个不能被明确命名的匿名变量，你最多只能这样定义：
 
-```
- type 'a c'_class = 'a constraint 'a = < m : int; .. >;;
-
-
+```ocaml
+# type 'a c'_class = 'a constraint 'a = < m : int; .. >;;
 ```
 
-with an extra type variable capturing the open object type.
+通过使用一个额外的类型变量来捕捉对象开放类型。
 
 ## 3.13  Functional objects
 
