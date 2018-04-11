@@ -1095,7 +1095,7 @@ val to_c1 : < m : #c1; .. > -> c1 = <fun>
 val to_c2 : #c2 -> c2 = <fun>
 ```
 
-需要注意的是两个类型转换之间的差别：一方面，在to_c2的情况下，#c2 = < m : 'a; .. > 类型是多态递归的（根据在c2类类型中的明确的递归），因此可以成功的接受类c0对象进行强制类型转换。另一方面，在第一种情况中，c1只是被拓展和展开两次来包含< m : < m : c1; .. >; .. >类型，而没有引入递归来定义类型。你也许会注意到 to_c2 的类型是 #c2 -> c2 而 to_c1 的类型是比起#c1 -> c1 却更加广泛。但是这种情况并不会一直发生，因为有些类的#c 的实例并不是c的子类型（在3.16里面有解释）。总的来说，对于无参数类的强制类型转换 (_ :> c)总是比(_ : #c :> c)更加广泛的。
+需要注意的是两个类型转换之间的差别：一方面，在to_c2的情况下，#c2 = < m : 'a; .. > 类型是多态相关的（根据在c2类类型中的明确的相关），因此可以成功的接受类c0对象进行强制类型转换。另一方面，在第一种情况中，c1只是被拓展和展开两次来包含< m : < m : c1; .. >; .. >类型，而没有引入相关来定义类型。你也许会注意到 to_c2 的类型是 #c2 -> c2 而 to_c1 的类型是比起#c1 -> c1 却更加广泛。但是这种情况并不会一直发生，因为有些类的#c 的实例并不是c的子类型（在3.16里面有解释）。总的来说，对于无参数类的强制类型转换 (_ :> c)总是比(_ : #c :> c)更加广泛的。
 
 在我们在定义类c的同时定义一个类c强制类型转换的时候普遍会发生一个问题。这个问题是因为类型缩写还没完全定义，所以它的子类型也不是完全清楚的，所以 (_ :> c) 或者 (_ : #c :> c)会被定义为一个函数，如下：
 
@@ -1202,7 +1202,7 @@ class c : object method m : int end
 
 通过使用一个额外的类型变量来捕捉对象开放类型。
 
-## 3.13 功能性对象
+## 3.13 函数式对象
 
 我们可以写一个没有带有实例变量绑定的point类。通过使用重写结构{< ... >} 返回一个self，这样可以改变一些对象变量的值：
 
@@ -1238,7 +1238,7 @@ val p : functional_point = <obj>
 - : int = 7
 ```
 
-需要注意的是functional_point类型缩略是递归的，因为self 的类型是'a而'，a在方法move中出现了。
+需要注意的是functional_point两个类型缩略是相关的，因为self 的类型是'a而'，a在方法move中出现了。
 
 上面的functional_point定义和下面这个是不等价的：
 
@@ -1260,112 +1260,93 @@ class bad_functional_point :
 
 即使一些类的对象会有相同的表现，但是他们的子类的对象也会不同。在子类bad_functional_point中，move方法依然会返回父类的对象。相反的是， functional_point的子类中，move方法将会返回子类的对象。
 
-功能性更新一般会用于结合两个方法（如同在6.2.1中描述的那样）。
+函数式更新一般会用于结合两个方法（如同在6.2.1中描述的那样）。
 
-## 3.14  Cloning objects
+## 3.14  克隆对象
 
-Objects can also be cloned, whether they are functional or imperative. The library function Oo.copy makes a shallow copy of an object. That is, it returns a new object that has the same methods and instance variables as its argument. The instance variables are copied but their contents are shared. Assigning a new value to an instance variable of the copy (using a method call) will not affect instance variables of the original, and conversely. A deeper assignment (for example if the instance variable is a reference cell) will of course affect both the original and the copy.
+对象可以被克隆，不管它是函数式的还是命令式的。库函数 Oo.copy 会浅克隆一个对象，也就是说，方法会返回一个同对象声明一样的，包含着相同的方法以及实例变量的新的对象。虽然实例变量被复制了，但是他们的内容是共享的。修改克隆对象的实例变量值不会影响原来的对象，反之亦然。但是一个深绑定（比如说一个实例变量为引用单元）的改变，必然会影响两者。
 
-The type of Oo.copy is the following:
+Oo.copy 的类型如下：
 
-```
- Oo.copy;;
-
+```ocaml
+# Oo.copy;;
 - : (< .. > as 'a) -> 'a = <fun>
-
 ```
 
-The keyword as in that type binds the type variable 'a to the object type < .. >. Therefore, Oo.copy takes an object with any methods (represented by the ellipsis), and returns an object of the same type. The type of Oo.copy is different from type < .. > -> < .. > as each ellipsis represents a different set of methods. Ellipsis actually behaves as a type variable.
+这个类型里的关键字绑定了对象类型< .. >作为'a的类型。于是，Oo.copy 接受含有任何方法的对象，然后返回相同的类型。Oo.copy 的类型有别于 < .. > -> < .. > ，因为每一个省略代表的是不同的方法集合。省略说实话，是作为一个实际类型来表现的。
 
-```
- let p = new point 5;;
-
+```ocaml
+# let p = new point 5;;
 val p : point = <obj>
-
 ```
 
-```
- let q = Oo.copy p;;
-
+```ocaml
+# let q = Oo.copy p;;
 val q : point = <obj>
-
 ```
 
-```
- q#move 7; (p#get_x, q#get_x);;
-
+```ocaml
+# q#move 7; (p#get_x, q#get_x);;
 - : int * int = (5, 12)
-
 ```
 
-In fact, Oo.copy p will behave as p#copy assuming that a public method copy with body {< >} has been defined in the class of p.
+事实上，Oo.copy p 将会表现为 p#copy （当作一个有 {< >}定义的公有方法在p里定义）。
 
-Objects can be compared using the generic comparison functions = and <>. Two objects are equal if and only if they are physically equal. In particular, an object and its copy are not equal.
+对象可以通过操作符=和<>来进行一般的比较。两个对象相等指的是物理上的（同一个储存空间），一个对象和他的克隆是不相等的。
 
-```
- let q = Oo.copy p;;
-
+```ocaml
+# let q = Oo.copy p;;
 val q : point = <obj>
-
 ```
 
-```
- p = q, p = p;;
-
+```ocaml
+# p = q, p = p;;
 - : bool * bool = (false, true)
-
 ```
 
-Other generic comparisons such as (<, <=, ...) can also be used on objects. The relation < defines an unspecified but strict ordering on objects. The ordering relationship between two objects is fixed once for all after the two objects have been created and it is not affected by mutation of fields.
+其他的比较操作符依然可以用在对象上（<, <=, …）。关系< 被定义为一个未确定但是严格的对象顺序。这种两个对象的顺序关系在两个对象创建以后是固定的，不受域的变化影响。
 
-Cloning and override have a non empty intersection. They are interchangeable when used within an object and without overriding any field:
+克隆和重写都有一个非空的交集。两个对象在没有重写任何域的时候是可以交换的：
 
-```
- class copy =
+```ocaml
+# class copy =
     object
       method copy = {< >}
     end;;
-
 class copy : object ('a) method copy : 'a end
-
 ```
 
-```
- class copy =
+```ocaml
+# class copy =
     object (self)
       method copy = Oo.copy self
     end;;
-
 class copy : object ('a) method copy : 'a end
-
 ```
 
-Only the override can be used to actually override fields, and only the Oo.copy primitive can be used externally.
+只有重写才会用于重写域，只有 Oo.copy 才能从外部访问原始值。
 
-Cloning can also be used to provide facilities for saving and restoring the state of objects.
+克隆也可以用于为储存对象状态提供容器：
 
-```
- class backup =
+```ocaml
+# class backup =
     object (self : 'mytype)
       val mutable copy = None
       method save = copy <- Some {< copy = None >}
       method restore = match copy with Some x -> x | None -> self
     end;;
-
 class backup :
   object ('a)
     val mutable copy : 'a option
     method restore : 'a
     method save : unit
   end
-
 ```
 
-The above definition will only backup one level. The backup facility can be added to any class by using multiple inheritance.
+以上的定义只会备份一层，备份的容器可以通过继承加到任何一个类上。
 
-```
- class ['a] backup_ref x = object inherit ['a] oref x inherit backup end;;
-
+```ocaml
+# class ['a] backup_ref x = object inherit ['a] oref x inherit backup end;;
 class ['a] backup_ref :
   'a ->
   object ('b)
@@ -1376,36 +1357,30 @@ class ['a] backup_ref :
     method save : unit
     method set : 'a -> unit
   end
-
 ```
 
-```
- let rec get p n = if n = 0 then p # get else get (p # restore) (n-1);;
-
+```Ocaml
+# let rec get p n = if n = 0 then p # get else get (p # restore) (n-1);;
 val get : (< get : 'b; restore : 'a; .. > as 'a) -> int -> 'b = <fun>
-
 ```
 
-```
- let p = new backup_ref 0  in
+```ocaml
+# let p = new backup_ref 0  in
   p # save; p # set 1; p # save; p # set 2;
   [get p 0; get p 1; get p 2; get p 3; get p 4];;
-
 - : int list = [2; 1; 1; 1; 1]
-
 ```
 
-We can define a variant of backup that retains all copies. (We also add a method clear to manually erase all copies.)
+我们可以定义一个变体来储存所有的备份。（同时也加入了删除备份的方法）
 
-```
- class backup =
+```ocaml
+# class backup =
     object (self : 'mytype)
       val mutable copy = None
       method save = copy <- Some {< >}
       method restore = match copy with Some x -> x | None -> self
       method clear = copy <- None
     end;;
-
 class backup :
   object ('a)
     val mutable copy : 'a option
@@ -1413,12 +1388,10 @@ class backup :
     method restore : 'a
     method save : unit
   end
-
 ```
 
-```
- class ['a] backup_ref x = object inherit ['a] oref x inherit backup end;;
-
+```ocaml
+# class ['a] backup_ref x = object inherit ['a] oref x inherit backup end;;
 class ['a] backup_ref :
   'a ->
   object ('b)
@@ -1430,24 +1403,21 @@ class ['a] backup_ref :
     method save : unit
     method set : 'a -> unit
   end
-
 ```
 
-```
- let p = new backup_ref 0  in
+```ocaml
+# let p = new backup_ref 0  in
   p # save; p # set 1; p # save; p # set 2;
   [get p 0; get p 1; get p 2; get p 3; get p 4];;
-
 - : int list = [2; 1; 0; 0; 0]
-
 ```
 
-## 3.15  Recursive classes
+## 3.15  相关类
 
-Recursive classes can be used to define objects whose types are mutually recursive.
+相关类可以用于定义类型是互相相关定义的对象。
 
-```
- class window =
+```ocaml
+# class window =
     object
       val mutable top_widget = (None : widget option)
       method top_widget = top_widget
@@ -1457,43 +1427,38 @@ Recursive classes can be used to define objects whose types are mutually recursi
       val window = w
       method window = window
     end;;
-
 class window :
   object
     val mutable top_widget : widget option
     method top_widget : widget option
   end
 and widget : window -> object val window : window method window : window end
-
 ```
 
-Although their types are mutually recursive, the classes widget and window are themselves independent.
+尽管他们的类型是互相相关定义的，但是widget类和window类是各自独立的。
 
-## 3.16  Binary methods
+## 3.16  二元方法
 
-A binary method is a method which takes an argument of the same type as self. The class comparable below is a template for classes with a binary method leq of type 'a -> bool where the type variable 'a is bound to the type of self. Therefore, #comparable expands to < leq : 'a -> bool; .. > as 'a. We see here that the binder as also allows writing recursive types.
+一个接受一个相同类型参数作为self的方法叫做二元方法。下面的comparable类是一个含有二元方法leq的类，在'a -> bool中的类型变量'a和self的类型是相关联的。于是#comparable 展开为了< leq : 'a -> bool; .. >来作为 'a的类型。这里的结合也可以接受相关类型。
 
-```
- class virtual comparable =
+```ocaml
+# class virtual comparable =
     object (_ : 'a)
       method virtual leq : 'a -> bool
     end;;
-
 class virtual comparable : object ('a) method virtual leq : 'a -> bool end
-
 ```
 
-We then define a subclass money of comparable. The class money simply wraps floats as comparable objects. We will extend it below with more operations. We have to use a type constraint on the class parameter x because the primitive <= is a polymorphic function in OCaml. The inherit clause ensures that the type of objects of this class is an instance of #comparable.
+定义comparable的一个子类money。money类简单的把浮点数包装成了comparable对象。我们将类拓展到如下代码方便有更多操作。我们必须在类参数上使用类型限制，因为在OCaml中 <= 是一个多态的函数。inherit 保证了对象的类型是#comparable类型的实例。
 
-```
- class money (x : float) =
+```ocaml
+# class money (x : float) =
     object
       inherit comparable
       val repr = x
       method value = repr
       method leq p = repr <= p#value
     end;;
-
 class money :
   float ->
   object ('a)
@@ -1501,20 +1466,18 @@ class money :
     method leq : 'a -> bool
     method value : float
   end
-
 ```
 
-Note that the type money is not a subtype of type comparable, as the self type appears in contravariant position in the type of method leq. Indeed, an object m of class money has a method leqthat expects an argument of type money since it accesses its value method. Considering m of type comparable would allow a call to method leq on m with an argument that does not have a method value, which would be an error.
+需要注意的是，money不是comparable的一个子类型，因为self在leq的类型是逆向表示的。money类的实例m的方法leq 需要money的类型声明，因为方法需要获得值的方法。类型为comparable的m将会允许没有方法值的参数调用leq方法，但是这样会发生错误。
 
-Similarly, the type money2 below is not a subtype of type money.
+相似的，如下定义的类型money2不是money类型的子类型。
 
-```
- class money2 x =
+```ocaml
+# class money2 x =
     object
       inherit money x
       method times k = {< repr = k *. repr >}
     end;;
-
 class money2 :
   float ->
   object ('a)
@@ -1523,43 +1486,36 @@ class money2 :
     method times : float -> 'a
     method value : float
   end
-
 ```
 
-It is however possible to define functions that manipulate objects of type either money or money2: the function min will return the minimum of any two objects whose type unifies with#comparable. The type of min is not the same as #comparable -> #comparable -> #comparable, as the abbreviation #comparable hides a type variable (an ellipsis). Each occurrence of this abbreviation generates a new variable.
+但是我们可以定义一个方法允许接受money或者money2作为参数：下面的函数min将会返回两个对象中较小的那个，两个对象的类型是通过#comparable来定义的。但是min的类型并不是#comparable -> #comparable -> #comparable，而是只接受一次#comparable 类型后确定为'a。每一次调用函数的时候，'a都是一个重新计算的类型变量。
 
-```
- let min (x : #comparable) y =
+```ocaml
+# let min (x : #comparable) y =
     if x#leq y then x else y;;
-
 val min : (#comparable as 'a) -> 'a -> 'a = <fun>
-
 ```
 
-This function can be applied to objects of type money or money2.
+这个函数可以用于money或者money2：
 
-```
- (min (new money  1.3) (new money 3.1))#value;;
-
+```Ocaml
+# (min (new money  1.3) (new money 3.1))#value;;
 - : float = 1.3
-
 ```
 
-```
- (min (new money2 5.0) (new money2 3.14))#value;;
-
+```Ocaml
+# (min (new money2 5.0) (new money2 3.14))#value;;
 - : float = 3.14
-
 ```
 
-More examples of binary methods can be found in sections [6.2.1](https://caml.inria.fr/pub/docs/manual-ocaml/advexamples.html#module%3Astring) and [6.2.3](https://caml.inria.fr/pub/docs/manual-ocaml/advexamples.html#module%3Aset).
+更多的二元方法的例子可以在6.2.1和6.2.3找到。
 
-Note the use of override for method times. Writing new money2 (k *. repr) instead of {< repr = k *. repr >} would not behave well with inheritance: in a subclass money3 of money2 the timesmethod would return an object of class money2 but not of class money3 as would be expected.
+需要注意的是在多次重写方法后，当你定义了new money2 (k *. repr)而不是 {< repr = k *. repr >} ，在继承中不会正确的表现： 在money2的子类money3中，times方法将会返回一个money2的对象，而不是如所期待的返回money3的对象。
 
-The class money could naturally carry another binary method. Here is a direct definition:
+money类还有另外的二元方法，这里是直接的定义：
 
-```
- class money x =
+```Ocaml
+# class money x =
     object (self : 'a)
       val repr = x
       method value = repr
@@ -1568,7 +1524,6 @@ The class money could naturally carry another binary method. Here is a direct de
       method leq (p : 'a) = repr <= p#value
       method plus (p : 'a) = {< repr = x +. p#value >}
     end;;
-
 class money :
   float ->
   object ('a)
@@ -1579,21 +1534,19 @@ class money :
     method times : float -> 'a
     method value : float
   end
-
 ```
 
-## 3.17  Friends
+## 3.17  友类
 
-The above class money reveals a problem that often occurs with binary methods. In order to interact with other objects of the same class, the representation of money objects must be revealed, using a method such as value. If we remove all binary methods (here plus and leq), the representation can easily be hidden inside objects by removing the method value as well. However, this is not possible as soon as some binary method requires access to the representation of objects of the same class (other than self).
+上面的money类揭露了一个二元方法会产生的普遍问题。为了和同一个类的其他对象交互，money对象需要有一个暴露在域中的代表（一个方法值）。当我们把二元方法删除之后，这个代表可以很简单的隐藏在一个移除了方法值的类中，但是，这个方法是不可行的，因为一些二元方法要求我们在其他同个类的对象中可以访问这个代表（而不是self）。
 
-```
- class safe_money x =
+```ocaml
+# class safe_money x =
     object (self : 'a)
       val repr = x
       method print = print_float repr
       method times k = {< repr = k *. x >}
     end;;
-
 class safe_money :
   float ->
   object ('a)
@@ -1601,13 +1554,12 @@ class safe_money :
     method print : unit
     method times : float -> 'a
   end
-
 ```
 
-Here, the representation of the object is known only to a particular object. To make it available to other objects of the same class, we are forced to make it available to the whole world. However we can easily restrict the visibility of the representation using the module system.
+在这里，对象的代表只被特殊的对象知道。为了让他可以被同个类的其他对象使用， 我们只能让它对全局开放。但是，我们可以通过使用module系统来重新规划代表的可见性。
 
-```
- module type MONEY =
+```ocaml
+# module type MONEY =
     sig
       type t
       class c : float ->
@@ -1620,8 +1572,6 @@ Here, the representation of the object is known only to a particular object. To 
           method plus : 'a -> 'a
         end
     end;;
-
-
  module Euro : MONEY =
     struct
       type t = float
@@ -1635,8 +1585,6 @@ Here, the representation of the object is known only to a particular object. To 
           method plus (p : 'a) = {< repr = x +. p#value >}
         end
     end;;
-
-
 ```
 
-Another example of friend functions may be found in section [6.2.3](https://caml.inria.fr/pub/docs/manual-ocaml/advexamples.html#module%3Aset). These examples occur when a group of objects (here objects of the same class) and functions should see each others internal representation, while their representation should be hidden from the outside. The solution is always to define all friends in the same module, give access to the representation and use a signature constraint to make the representation abstract outside the module.
+另一个友方法的例子在6.2.3中可以找到。这些例子是在对象和函数需要看到彼此的代表的，但是这些代表却需要对外界隐藏的时候产生的，这些解决方法通常将所有的友类在同一个module里面定义，通过签名来限制这些代表对内对外的可见性。
