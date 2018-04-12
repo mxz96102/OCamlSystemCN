@@ -1,174 +1,129 @@
-# Chapter 4  Labels and variants
+# 第四章 标签与变体
 
-- [4.1  Labels](https://caml.inria.fr/pub/docs/manual-ocaml/lablexamples.html#sec42)
-- [4.2  Polymorphic variants](https://caml.inria.fr/pub/docs/manual-ocaml/lablexamples.html#sec46)
+本章节主要介绍OCaml 3中的新特性：标签和多态变体。
 
-(Chapter written by Jacques Garrigue)
+## 4.1 标签
 
-This chapter gives an overview of the new features in OCaml 3: labels, and polymorphic variants.
+如果你看过标准库中的那些以标签结尾的module，你将会看到这些函数与你定义的函数有些不同的类型声明。
 
-## 4.1  Labels
-
-If you have a look at modules ending in Labels in the standard library, you will see that function types have annotations you did not have in the functions you defined yourself.
-
-```
- ListLabels.map;;
-
+```ocaml
+# ListLabels.map;;
 - : f:('a -> 'b) -> 'a list -> 'b list = <fun>
-
 ```
 
-```
- StringLabels.sub;;
-
+```ocaml
+# StringLabels.sub;;
 - : string -> pos:int -> len:int -> string = <fun>
-
 ```
 
-Such annotations of the form name: are called *labels*. They are meant to document the code, allow more checking, and give more flexibility to function application. You can give such names to arguments in your programs, by prefixing them with a tilde ~.
+这样的声明形式叫做 标签（label）。标签可以用来给代码加上文档，允许更多的检查，让函数应用更具灵活性。你可以通过给参数加上前缀 ~ 来加上这样的标签：
 
-```
- let f ~x ~y = x - y;;
-
+```ocaml
+# let f ~x ~y = x - y;;
 val f : x:int -> y:int -> int = <fun>
-
 ```
 
-```
- let x = 3 and y = 2 in f ~x ~y;;
-
+```ocaml
+# let x = 3 and y = 2 in f ~x ~y;;
 - : int = 1
-
 ```
 
-When you want to use distinct names for the variable and the label appearing in the type, you can use a naming label of the form ~name:. This also applies when the argument is not a variable.
+当你想要让参数变为别名变量，让标签在类型中显示的时候，你可以使用 ~name: 这样的形式，你也可以通过这样的形式，格式化传参：
 
-```
- let f ~x:x1 ~y:y1 = x1 - y1;;
-
+```ocaml
+# let f ~x:x1 ~y:y1 = x1 - y1;;
 val f : x:int -> y:int -> int = <fun>
-
 ```
 
-```
- f ~x:3 ~y:2;;
-
+```ocaml
+# f ~x:3 ~y:2;;
 - : int = 1
-
 ```
 
-Labels obey the same rules as other identifiers in OCaml, that is you cannot use a reserved keyword (like in or to) as label.
+标签和其他OCaml标识符遵守相同的规则，他们不能和预留关键字重名。
 
-Formal parameters and arguments are matched according to their respective labels[1](https://caml.inria.fr/pub/docs/manual-ocaml/lablexamples.html#note1), the absence of label being interpreted as the empty label. This allows commuting arguments in applications. One can also partially apply a function on any argument, creating a new function of the remaining parameters.
+格式化参数通过各自的标签来匹配，如果没有标签匹配的话，将会当作空标签来解释。这就允许了应用中的参数交流。一个函数也可以部分的接受一个函数作为任意参数，创造出剩下参数的新函数：
 
-```
- let f ~x ~y = x - y;;
-
+```ocaml
+# let f ~x ~y = x - y;;
 val f : x:int -> y:int -> int = <fun>
-
 ```
 
-```
- f ~y:2 ~x:3;;
-
+```ocaml
+# f ~y:2 ~x:3;;
 - : int = 1
-
 ```
 
-```
- ListLabels.fold_left;;
-
+```ocaml
+# ListLabels.fold_left;;
 - : f:('a -> 'b -> 'a) -> init:'a -> 'b list -> 'a = <fun>
-
 ```
 
-```
- ListLabels.fold_left [1;2;3] ~init:0 ~f:( + );;
-
+```o cam l
+# ListLabels.fold_left [1;2;3] ~init:0 ~f:( + );;
 - : int = 6
-
 ```
 
-```
- ListLabels.fold_left ~init:0;;
-
+```ocaml
+# ListLabels.fold_left ~init:0;;
 - : f:(int -> 'a -> int) -> 'a list -> int = <fun>
-
 ```
 
-If several arguments of a function bear the same label (or no label), they will not commute among themselves, and order matters. But they can still commute with other arguments.
+如果有些参数共享了标签的话，他们交流的顺序是按照传承顺序来决定的，但是其他的参数依然不影响：
 
-```
- let hline ~x:x1 ~x:x2 ~y = (x1, x2, y);;
-
+```ocaml
+# let hline ~x:x1 ~x:x2 ~y = (x1, x2, y);;
 val hline : x:'a -> x:'b -> y:'c -> 'a * 'b * 'c = <fun>
-
 ```
 
-```
- hline ~x:3 ~y:2 ~x:5;;
-
+```ocaml
+# hline ~x:3 ~y:2 ~x:5;;
 - : int * int * int = (3, 5, 2)
-
 ```
 
-As an exception to the above parameter matching rules, if an application is total (omitting all optional arguments), labels may be omitted. In practice, many applications are total, so that labels can often be omitted.
+作为参数匹配的规则，如果一个应用接受了所有参数，那么标签可能能会被忽略。在实践中，许多应用都是接受了所有参数的，所以标签经常会被忽略：
 
-```
- f 3 2;;
-
+```ocaml
+# f 3 2;;
 - : int = 1
-
 ```
 
-```
- ListLabels.map succ [1;2;3];;
-
+```ocaml
+# ListLabels.map succ [1;2;3];;
 - : int list = [2; 3; 4]
-
 ```
 
-But beware that functions like ListLabels.fold_left whose result type is a type variable will never be considered as totally applied.
+但是要注意类似于ListLabels.fold_left这样的函数，这样的函数不会有接受完参数这样的状态：
 
-```
- ListLabels.fold_left ( + ) 0 [1;2;3];;
-
+```ocaml
+# ListLabels.fold_left ( + ) 0 [1;2;3];;
 Error: This expression has type int -> int -> int
        but an expression was expected of type 'a list
-
 ```
 
-When a function is passed as an argument to a higher-order function, labels must match in both types. Neither adding nor removing labels are allowed.
+当一个函数作为参数传到了高阶函数中，那么标签必须在两者的类型中都匹配，不允许加入或者删除标签：
 
-```
- let h g = g ~x:3 ~y:2;;
-
+```ocaml
+# let h g = g ~x:3 ~y:2;;
 val h : (x:int -> y:int -> 'a) -> 'a = <fun>
-
 ```
 
-```
- h f;;
-
+```ocaml
+# h f;;
 - : int = 1
-
 ```
 
-```
- h ( + ) ;;
-
+```ocaml
+# h ( + ) ;;
 Error: This expression has type int -> int -> int
        but an expression was expected of type x:int -> y:int -> 'a
-
 ```
 
-Note that when you don’t need an argument, you can still use a wildcard pattern, but you must prefix it with the label.
+不过需要注意的是，当你不需要某个参数的时候，你可以使用未知匹配，但是你必须对这个参数使用标签前缀：
 
-```
- h (fun ~x:_ ~y -> y+1);;
-
+```ocaml
+# h (fun ~x:_ ~y -> y+1);;
 - : int = 3
-
 ```
 
 ### 4.1.1  Optional arguments
