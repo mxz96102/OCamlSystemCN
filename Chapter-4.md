@@ -126,249 +126,205 @@ Error: This expression has type int -> int -> int
 - : int = 3
 ```
 
-### 4.1.1  Optional arguments
+### 4.1.1  可选参数
 
-An interesting feature of labeled arguments is that they can be made optional. For optional parameters, the question mark ? replaces the tilde ~ of non-optional ones, and the label is also prefixed by ? in the function type. Default values may be given for such optional parameters.
+标签参数的一个有趣的特性就是，他们可以被声明为可选的。对于可选参数，我们需要使用 ? 来代替 ~ 来声明参数，声明时必须给出默认值：
 
-```
- let bump ?(step = 1) x = x + step;;
-
+```Ocaml
+# let bump ?(step = 1) x = x + step;;
 val bump : ?step:int -> int -> int = <fun>
-
 ```
 
-```
- bump 2;;
-
+```Ocaml
+# bump 2;;
 - : int = 3
-
 ```
 
-```
- bump ~step:3 2;;
-
+```Ocaml
+# bump ~step:3 2;;
 - : int = 5
-
 ```
 
-A function taking some optional arguments must also take at least one non-optional argument. The criterion for deciding whether an optional argument has been omitted is the non-labeled application of an argument appearing after this optional argument in the function type. Note that if that argument is labeled, you will only be able to eliminate optional arguments through the special case for total applications.
+一个接受可选参数的函数需要至少有一个不是可选的参数。判断一个可选参数是否被忽略的标准是，这个参数后有没有出现函数的类型。需要注意如果参数加上了?标签，你只能通过一些特殊的方法来让参数不被忽略：
 
-```
- let test ?(x = 0) ?(y = 0) () ?(z = 0) () = (x, y, z);;
-
+```ocaml
+# let test ?(x = 0) ?(y = 0) () ?(z = 0) () = (x, y, z);;
 val test : ?x:int -> ?y:int -> unit -> ?z:int -> unit -> int * int * int =
   <fun>
-
 ```
 
-```
- test ();;
-
+```Ocaml
+# test ();;
 - : ?z:int -> unit -> int * int * int = <fun>
-
 ```
 
-```
- test ~x:2 () ~z:3 ();;
-
+```Ocaml
+# test ~x:2 () ~z:3 ();;
 - : int * int * int = (2, 0, 3)
-
 ```
 
-Optional parameters may also commute with non-optional or unlabeled ones, as long as they are applied simultaneously. By nature, optional arguments do not commute with unlabeled arguments applied independently.
+可选参数也可以和不可选参数或者没加标签的参数交流，前提是他们同时被传入。自然的，可选参数并不能和独自传入的没有标签的参数交流。
 
-```
- test ~y:2 ~x:3 () ();;
-
+```ocaml
+# test ~y:2 ~x:3 () ();;
 - : int * int * int = (3, 2, 0)
-
 ```
 
-```
- test () () ~z:1 ~y:2 ~x:3;;
-
+```ocaml
+# test () () ~z:1 ~y:2 ~x:3;;
 - : int * int * int = (3, 2, 1)
-
 ```
 
-```
- (test () ()) ~z:1 ;;
-
+```ocaml
+# (test () ()) ~z:1 ;;
 Error: This expression has type int * int * int
        This is not a function; it cannot be applied.
-
 ```
 
-Here (test () ()) is already (0,0,0) and cannot be further applied.
+在上列例子中，(test () ()) 已经接受完了参数(0, 0, 0)，所以更多的参数不能再被传入。
 
-Optional arguments are actually implemented as option types. If you do not give a default value, you have access to their internal representation, type 'a option = None | Some of 'a. You can then provide different behaviors when an argument is present or not.
+可选参数一般会由可选类型来实现。如果你没有给予一个默认值，那么你就需要通过类型None 和 Some来判断有没有传入参数。你可以在传入参数不同的情况下表现不同的行为。
 
-```
- let bump ?step x =
+```ocaml
+# let bump ?step x =
     match step with
     | None -> x * 2
     | Some y -> x + y
   ;;
-
 val bump : ?step:int -> int -> int = <fun>
-
 ```
 
-It may also be useful to relay an optional argument from a function call to another. This can be done by prefixing the applied argument with ?. This question mark disables the wrapping of optional argument in an option type.
+你也可以在一个可选参数的函数基础上来调用另一个函数，依然是通过在参数前加上?前缀。这个符号在使用后就不会造成参数被直接推导为可选类型。
 
-```
- let test2 ?x ?y () = test ?x ?y () ();;
-
+```ocaml
+# let test2 ?x ?y () = test ?x ?y () ();;
 val test2 : ?x:int -> ?y:int -> unit -> int * int * int = <fun>
-
 ```
 
-```
- test2 ?x:None;;
-
+```ocaml
+# test2 ?x:None;;
 - : ?y:int -> unit -> int * int * int = <fun>
-
 ```
 
-### 4.1.2  Labels and type inference
+### 4.1.2  标签和类型推导
 
-While they provide an increased comfort for writing function applications, labels and optional arguments have the pitfall that they cannot be inferred as completely as the rest of the language.
+标签和可选参数在带给编程舒适性的同时，也蕴含着语言中完全无法推测的陷阱。
 
-You can see it in the following two examples.
+下面两个例子就是这样的：
 
-```
- let h' g = g ~y:2 ~x:3;;
-
+```ocaml
+# let h' g = g ~y:2 ~x:3;;
 val h' : (y:int -> x:int -> 'a) -> 'a = <fun>
-
 ```
 
-```
- h' f ;;
-
+```ocaml
+# h' f ;;
 Error: This expression has type x:int -> y:int -> int
        but an expression was expected of type y:int -> x:int -> 'a
-
 ```
 
-```
- let bump_it bump x =
+```ocaml
+# let bump_it bump x =
     bump ~step:2 x;;
-
 val bump_it : (step:int -> 'a -> 'b) -> 'a -> 'b = <fun>
-
 ```
 
-```
- bump_it bump 1 ;;
-
+```ocaml
+# bump_it bump 1 ;;
 Error: This expression has type ?step:int -> int -> int
        but an expression was expected of type step:int -> 'a -> 'b
-
 ```
 
-The first case is simple: g is passed ~y and then ~x, but f expects ~x and then ~y. This is correctly handled if we know the type of g to be x:int -> y:int -> int in advance, but otherwise this causes the above type clash. The simplest workaround is to apply formal parameters in a standard order.
+在第一个例子中，g传递来先~y后~x两个参数，但是f确实期待着先~x后~y的。但是如果我们提前知道了类型为  x:int -> y:int -> int 就可以正确处理这种情况。最简单的变通方法就是按照顺序来传入参数。
 
-The second example is more subtle: while we intended the argument bump to be of type ?step:int -> int -> int, it is inferred as step:int -> int -> 'a. These two types being incompatible (internally normal and optional arguments are different), a type error occurs when applying bump_it to the real bump.
+第二个例子就更加微妙了，在我们试图让bump的类型为 ?step:int -> int -> int 的同时，它却被推导为了 step:int -> int -> 'a。这两个类型是不相容的（一般参数和可选参数是不同的），所以在我们使用真的bump类型的时候就会发生类型错误。
 
-We will not try here to explain in detail how type inference works. One must just understand that there is not enough information in the above program to deduce the correct type of g or bump. That is, there is no way to know whether an argument is optional or not, or which is the correct order, by looking only at how a function is applied. The strategy used by the compiler is to assume that there are no optional arguments, and that applications are done in the right order.
+在这里提出这些的目的并不是要解释类型推导的工作细节。一个必须理解的事情是，不管是g还是bump在编写使用他们的函数的时候，都没有足够的信息来推导出他们的类型的。的确，在编写过程中是无法看一眼参数，就知道这些参数是否可选，他们的顺序是怎样的。编译器使用的策略就是假设参数里面没有可选参数，所有参数都按照正确顺序接受。
 
-The right way to solve this problem for optional parameters is to add a type annotation to the argument bump.
+这个问题正确的解决方法是给函数加上类型声明：
 
-```
- let bump_it (bump : ?step:int -> int -> int) x =
+```Ocaml
+# let bump_it (bump : ?step:int -> int -> int) x =
     bump ~step:2 x;;
-
 val bump_it : (?step:int -> int -> int) -> int -> int = <fun>
-
 ```
 
-```
- bump_it bump 1;;
-
+```Ocaml
+# bump_it bump 1;;
 - : int = 3
-
 ```
 
-In practice, such problems appear mostly when using objects whose methods have optional arguments, so that writing the type of object arguments is often a good idea.
+在实践中，这样的问题一般在使用对象作为可选参数时候出现，所以在参数中声明对象类型是个好办法。
 
-Normally the compiler generates a type error if you attempt to pass to a function a parameter whose type is different from the expected one. However, in the specific case where the expected type is a non-labeled function type, and the argument is a function expecting optional parameters, the compiler will attempt to transform the argument to have it match the expected type, by passing None for all optional parameters.
+如果你要把一个不同的类型传入参数，编译器通常会报错。但是，在一个特殊的情况，如果期待的类型是一个没有标签的函数类型，而且传入的参数是一个期待可选参数的函数，编译器就会尝试去把他们的类型转换为匹配的，对所有的可选参数传递None。
 
-```
- let twice f (x : int) = f(f x);;
-
+```ocaml
+# let twice f (x : int) = f(f x);;
 val twice : (int -> int) -> int -> int = <fun>
-
 ```
 
-```
- twice bump 2;;
-
+```ocaml
+# twice bump 2;;
 - : int = 8
-
 ```
 
-This transformation is coherent with the intended semantics, including side-effects. That is, if the application of optional parameters shall produce side-effects, these are delayed until the received function is really applied to an argument.
+这样的转换和预期的语义是一致的，包括在副作用方面。也就是说，如果在使用可选参数的时候产生了副作用，那么这些副作用会被延迟到函数接受了参数的时候。
 
-### 4.1.3  Suggestions for labeling
+### 4.1.3  对于标签的建议
 
-Like for names, choosing labels for functions is not an easy task. A good labeling is a labeling which
+和命名一样，选择正确的函数标签也不是一个容易的任务，一个好的标签满足：
 
-- makes programs more readable,
-- is easy to remember,
-- when possible, allows useful partial applications.
+- 让程序更具可读性
+- 容易记住
+- 在可能时，允许不完整的应用存在
 
-We explain here the rules we applied when labeling OCaml libraries.
+我们可以通过OCaml库中的标签来解释这些情况。
 
-To speak in an “object-oriented” way, one can consider that each function has a main argument, its *object*, and other arguments related with its action, the *parameters*. To permit the combination of functions through functionals in commuting label mode, the object will not be labeled. Its role is clear from the function itself. The parameters are labeled with names reminding of their nature or their role. The best labels combine nature and role. When this is not possible the role is to be preferred, since the nature will often be given by the type itself. Obscure abbreviations should be avoided.
+为了以一个面向对象的角度来叙述，可以假设每一个函数都有一个主要的参数，它的对象，其他的参数都是和他的行为有关的。为了允许函数的功能性结合以及通过标签交流，对象本身并没有标签，它的角色从函数本身剥离了出来。那些有着标签的参数，标签代表了他们的性质或者作用。最好的标签结合了这两者。当不可能兼得的时候，因为性质一般从类型看出来，我们需要依照作用来作为标签。不过，要尽量避免使用过于复杂的缩写。
 
-```
+```ocaml
 ListLabels.map : f:('a -> 'b) -> 'a list -> 'b list
 UnixLabels.write : file_descr -> buf:bytes -> pos:int -> len:int -> unit
-
 ```
 
-When there are several objects of same nature and role, they are all left unlabeled.
+当几个对象有着同样的作用和性质的时候，一般不会有标签。
 
-```
+```ocmal
 ListLabels.iter2 : f:('a -> 'b -> 'c) -> 'a list -> 'b list -> unit
-
 ```
 
-When there is no preferable object, all arguments are labeled.
+当没有一个合适的对象的时候，所有的参数都有标签。
 
-```
+```ocaml
 BytesLabels.blit :
   src:bytes -> src_pos:int -> dst:bytes -> dst_pos:int -> len:int -> unit
-
 ```
 
-However, when there is only one argument, it is often left unlabeled.
+但是，只有一个参数的时候，通常没有标签：
 
-```
+```ocaml
 BytesLabels.create : int -> bytes
-
 ```
 
-This principle also applies to functions of several arguments whose return type is a type variable, as long as the role of each argument is not ambiguous. Labeling such functions may lead to awkward error messages when one attempts to omit labels in an application, as we have seen with ListLabels.fold_left.
+只要参数之间的作用没有歧义，这些准则通常对于类型是一个类型变量的函数适用。标记这样的参数通常会在忽略导致一些尴尬的错误信息。比如我们在 ListLabels.fold_left 里面看到的那样。
 
-Here are some of the label names you will find throughout the libraries.
+这些是一些库中常用的标签：
 
-| Label | Meaning                                  |
-| ----- | ---------------------------------------- |
-| f:    | a function to be applied                 |
-| pos:  | a position in a string, array or byte sequence |
-| len:  | a length                                 |
-| buf:  | a byte sequence or string used as buffer |
-| src:  | the source of an operation               |
-| dst:  | the destination of an operation          |
-| init: | the initial value for an iterator        |
-| cmp:  | a comparison function, e.g. Pervasives.compare |
-| mode: | an operation mode or a flag list         |
+| 标签  | 意义                                   |
+| ----- | -------------------------------------- |
+| f:    | 接受一个函数                           |
+| pos:  | 在string array 或者bytes里面的一个位置 |
+| len:  | 长度                                   |
+| buf:  | 作为buffer的string或者bytes            |
+| src:  | 操作源                                 |
+| dst:  | 操作的目的地                           |
+| init: | 初始值                                 |
+| cmp:  | 比较函数                               |
+| mode: | 操作模式，或是模式的一个list           |
 
-All these are only suggestions, but keep in mind that the choice of labels is essential for readability. Bizarre choices will make the program harder to maintain.
+当然，这些都只是建议，要铭记在心的是，选择标签是基于可读性的。越是古怪的选择，越是让程序难以维护。
 
-In the ideal, the right function name with right labels should be enough to understand the function’s meaning. Since one can get this information with OCamlBrowser or the ocaml toplevel, the documentation is only used when a more detailed specification is needed.
+在这些建议中，正确的函数名和正确的标签应该要能够理解函数的意义。因为这些信息可以通过OCamlBrowser和ocaml toplevel来得到，文档只是为了更细节的描述而使用的。
 
 ## 4.2  Polymorphic variants
 
