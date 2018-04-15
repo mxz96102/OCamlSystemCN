@@ -2,6 +2,10 @@
 
 本章节主要介绍OCaml 3中的新特性：标签和多态变体。
 
+[TOC]
+
+
+
 ## 4.1 标签
 
 如果你看过标准库中的那些以标签结尾的module，你将会看到这些函数与你定义的函数有些不同的类型声明。
@@ -326,254 +330,200 @@ BytesLabels.create : int -> bytes
 
 在这些建议中，正确的函数名和正确的标签应该要能够理解函数的意义。因为这些信息可以通过OCamlBrowser和ocaml toplevel来得到，文档只是为了更细节的描述而使用的。
 
-## 4.2  Polymorphic variants
+## 4.2  多态变体
 
-Variants as presented in section [1.4](https://caml.inria.fr/pub/docs/manual-ocaml/coreexamples.html#s%3Atut-recvariants) are a powerful tool to build data structures and algorithms. However they sometimes lack flexibility when used in modular programming. This is due to the fact that every constructor is assigned to a unique type when defined and used. Even if the same name appears in the definition of multiple types, the constructor itself belongs to only one type. Therefore, one cannot decide that a given constructor belongs to multiple types, or consider a value of some type to belong to some other type with more constructors.
+如同在1.4节中展示的那样，变体是一个用来构建数据结构和算法的强有力的工具。但是，有些时候它们对于模型化编程缺乏灵活性。这是因为每个构造器都要被分配一个独特的类型来定义和使用美好。甚至是在一个多类型的定义中，每一个命名类型都会被赋予属于单个的构造器。于是，当不能决定构造器是属于哪个多类型的时候，或者一个类型的值同时也属于其他类型的时候，变成了很复杂的情况。
 
-With polymorphic variants, this original assumption is removed. That is, a variant tag does not belong to any type in particular, the type system will just check that it is an admissible value according to its use. You need not define a type before using a variant tag. A variant type will be inferred independently for each of its uses.
+通过使用后多态变体，这个假设就被解决了。也就是说，一个变体标记不属于任何的类型，类型系统只会检查他能否采纳这个类型来使用。在使用变体标记之前，你不需要定义类型。变体类型会在每一次使用中被独立的推导。
 
-### Basic use
+### 基础用法
 
-In programs, polymorphic variants work like usual ones. You just have to prefix their names with a backquote character `.
+在程序中，多态变体和一般的变体差不多，你只需要在命名时前面加上`前缀。
 
-```
- [`On; `Off];;
-
+```Ocaml
+# [`On; `Off];;
 - : [> `Off | `On ] list = [`On; `Off]
-
 ```
 
-```
- `Number 1;;
-
+```Ocaml
+# `Number 1;;
 - : [> `Number of int ] = `Number 1
-
 ```
 
-```
- let f = function `On -> 1 | `Off -> 0 | `Number n -> n;;
-
+```Ocaml
+# let f = function `On -> 1 | `Off -> 0 | `Number n -> n;;
 val f : [< `Number of int | `Off | `On ] -> int = <fun>
-
 ```
 
-```
- List.map f [`On; `Off];;
-
+```Ocaml
+# List.map f [`On; `Off];;
 - : int list = [1; 0]
-
 ```
 
-[>`Off|`On] list means that to match this list, you should at least be able to match `Off and `On, without argument. [<`On|`Off|`Number of int] means that f may be applied to `Off, `On (both without argument), or `Number n where n is an integer. The >and < inside the variant types show that they may still be refined, either by defining more tags or by allowing less. As such, they contain an implicit type variable. Because each of the variant types appears only once in the whole type, their implicit type variables are not shown.
+[> \` Off| \`On] 的意思是，如果你要匹配这个list，你至少需要\` Off 或者 \`On来匹配。[<\`On|\`Off|\`Number of int] 的意思是，f 可以接受的参数是 不需要参数的 \`On | \`Off 或者是接受整型的 \`Number。在变体类型中的 > 和< 表示它们依然可以继续改变，可以接受更少的类型或者定义更多类型。如此，它们包含了一个内含的类型变量。因为每一个变体类型只在整个类型中出现一次，它们所隐含的类型变量就不会出现。
 
-The above variant types were polymorphic, allowing further refinement. When writing type annotations, one will most often describe fixed variant types, that is types that cannot be refined. This is also the case for type abbreviations. Such types do not contain < or >, but just an enumeration of the tags and their associated types, just like in a normal datatype definition.
+上面代码的变体类型都是多态，并且允许将来的重写的。当在书写类型声明的时候，如果描述的是固定的变体类型的时候，类型是不能被重写的。这对于缩略类型也依然适用。这样的类型不包含> 或者 <， 只是封装了相关类型好，就像普通的数据类型定义：
 
-```
- type 'a vlist = [`Nil | `Cons of 'a * 'a vlist];;
-
+```Ocaml
+# type 'a vlist = [`Nil | `Cons of 'a * 'a vlist];;
 type 'a vlist = [ `Cons of 'a * 'a vlist | `Nil ]
-
 ```
 
-```
- let rec map f : 'a vlist -> 'b vlist = function
+```Ocaml
+# let rec map f : 'a vlist -> 'b vlist = function
     | `Nil -> `Nil
     | `Cons(a, l) -> `Cons(f a, map f l)
   ;;
-
 val map : ('a -> 'b) -> 'a vlist -> 'b vlist = <fun>
-
 ```
 
-### Advanced use
+### 进阶用法
 
-Type-checking polymorphic variants is a subtle thing, and some expressions may result in more complex type information.
+附带类型检查的多态变体是一种精妙的用法。一些这样的表达式会导致更加复杂的类型信息。
 
 ```
- let f = function `A -> `C | `B -> `D | x -> x;;
-
+# let f = function `A -> `C | `B -> `D | x -> x;;
 val f : ([> `A | `B | `C | `D ] as 'a) -> 'a = <fun>
-
 ```
 
-```
- f `E;;
-
+```ocaml
+# f `E;;
 - : [> `A | `B | `C | `D | `E ] = `E
-
 ```
 
-Here we are seeing two phenomena. First, since this matching is open (the last case catches any tag), we obtain the type [> `A | `B] rather than [< `A | `B] in a closed matching. Then, since x is returned as is, input and return types are identical. The notation as 'a denotes such type sharing. If we apply f to yet another tag `E, it gets added to the list.
+这里我们可以目睹两个现象。首先，因为这个匹配是开放的（最后一个可以匹配任意标签），我们有了类型 [> \`A | \`B] 而不是 [< \`A | \`B]的闭合匹配。其次，因为x返回自身，输入类型和输出类型都是独特的。>符号就是用来表示这样的类型拓展的，如果我们把 \`E加入到其中，会有新的一组类型。
 
-```
- let f1 = function `A x -> x = 1 | `B -> true | `C -> false
+```ocaml
+# let f1 = function `A x -> x = 1 | `B -> true | `C -> false
   let f2 = function `A x -> x = "a" | `B -> true ;;
-
 val f1 : [< `A of int | `B | `C ] -> bool = <fun>
 val f2 : [< `A of string | `B ] -> bool = <fun>
-
 ```
 
-```
- let f x = f1 x && f2 x;;
-
+```Ocaml
+# let f x = f1 x && f2 x;;
 val f : [< `A of string & int | `B ] -> bool = <fun>
-
 ```
 
-Here f1 and f2 both accept the variant tags `A and `B, but the argument of `A is int for f1 and string for f2. In f’s type `C, only accepted by f1, disappears, but both argument types appear for `A as int & string. This means that if we pass the variant tag `A to f, its argument should be *both* int and string. Since there is no such value, f cannot be applied to `A, and `B is the only accepted input.
+这里的f1和f2都接受了变体\`A和\`B，但是\`A的声明在f1中是整数，而在f2中是string。在f的的类型中，\`C只被f1接受，所以消失了，而A由int和string来作为参数类型。这意味着，如果我们传递\`A 给变体f，它的必须既是int又是string，但是由于没有这样的值存在，f无法应用于\`A，也只接受输入为\`B。
 
-Even if a value has a fixed variant type, one can still give it a larger type through coercions. Coercions are normally written with both the source type and the destination type, but in simple cases the source type may be omitted.
+甚至一个值有固定的变体类型，那么就不能通过更大的强制类型转换得到。强制类型转换，一般会书写源类型和目标类型，但是在例子中，源类型可以被忽略。
 
 ```
- type 'a wlist = [`Nil | `Cons of 'a * 'a wlist | `Snoc of 'a wlist * 'a];;
-
+# type 'a wlist = [`Nil | `Cons of 'a * 'a wlist | `Snoc of 'a wlist * 'a];;
 type 'a wlist = [ `Cons of 'a * 'a wlist | `Nil | `Snoc of 'a wlist * 'a ]
-
 ```
 
-```
- let wlist_of_vlist  l = (l : 'a vlist :> 'a wlist);;
-
+```ocaml
+# let wlist_of_vlist  l = (l : 'a vlist :> 'a wlist);;
 val wlist_of_vlist : 'a vlist -> 'a wlist = <fun>
-
 ```
 
-```
- let open_vlist l = (l : 'a vlist :> [> 'a vlist]);;
-
+```ocaml
+# let open_vlist l = (l : 'a vlist :> [> 'a vlist]);;
 val open_vlist : 'a vlist -> [> 'a vlist ] = <fun>
-
 ```
 
-```
- fun x -> (x :> [`A|`B|`C]);;
-
+```ocaml
+# fun x -> (x :> [`A|`B|`C]);;
 - : [< `A | `B | `C ] -> [ `A | `B | `C ] = <fun>
-
 ```
 
-You may also selectively coerce values through pattern matching.
+你也可以使用模式匹配来选择性的强制转换类型：
 
-```
- let split_cases = function
+```ocaml
+# let split_cases = function
     | `Nil | `Cons _ as x -> `A x
     | `Snoc _ as x -> `B x
   ;;
-
 val split_cases :
   [< `Cons of 'a | `Nil | `Snoc of 'b ] ->
   [> `A of [> `Cons of 'a | `Nil ] | `B of [> `Snoc of 'b ] ] = <fun>
-
 ```
 
-When an or-pattern composed of variant tags is wrapped inside an alias-pattern, the alias is given a type containing only the tags enumerated in the or-pattern. This allows for many useful idioms, like incremental definition of functions.
+当一群变体标签被包装在或模式，他们的别名只给出变体标签封装后的类型。这样的特性就可以书写很多用法，例如递增的定义函数：
 
-```
- let num x = `Num x
+```ocaml
+# let num x = `Num x
   let eval1 eval (`Num x) = x
   let rec eval x = eval1 eval x ;;
-
 val num : 'a -> [> `Num of 'a ] = <fun>
 val eval1 : 'a -> [< `Num of 'b ] -> 'b = <fun>
 val eval : [< `Num of 'a ] -> 'a = <fun>
-
 ```
 
-```
- let plus x y = `Plus(x,y)
+```ocaml
+# let plus x y = `Plus(x,y)
   let eval2 eval = function
     | `Plus(x,y) -> eval x + eval y
     | `Num _ as x -> eval1 eval x
   let rec eval x = eval2 eval x ;;
-
 val plus : 'a -> 'b -> [> `Plus of 'a * 'b ] = <fun>
 val eval2 : ('a -> int) -> [< `Num of int | `Plus of 'a * 'a ] -> int = <fun>
 val eval : ([< `Num of int | `Plus of 'a * 'a ] as 'a) -> int = <fun>
-
 ```
 
-To make this even more comfortable, you may use type definitions as abbreviations for or-patterns. That is, if you have defined type myvariant = [`Tag1 of int | `Tag2 of bool], then the pattern #myvariant is equivalent to writing (`Tag1(_ : int) | `Tag2(_ : bool)).
+为了让这种写法更舒适，你可以使用类型定义简写来做或匹配。这就是说，如果你定义了一个类型 myvariant = [\`Tag1 of int | \`Tag2 of bool]，那么类型#myvariant等于在写(\`Tag1 of int | \`Tag2 of bool)。
 
-Such abbreviations may be used alone,
+这用的缩写可以单独使用：
 
-```
- let f = function
+```ocaml
+# let f = function
     | #myvariant -> "myvariant"
     | `Tag3 -> "Tag3";;
-
 val f : [< `Tag1 of int | `Tag2 of bool | `Tag3 ] -> string = <fun>
-
 ```
 
-or combined with with aliases.
+或者和其他别名结合：
 
-```
- let g1 = function `Tag1 _ -> "Tag1" | `Tag2 _ -> "Tag2";;
-
+```Ocaml
+# let g1 = function `Tag1 _ -> "Tag1" | `Tag2 _ -> "Tag2";;
 val g1 : [< `Tag1 of 'a | `Tag2 of 'b ] -> string = <fun>
-
 ```
 
-```
- let g = function
+```Ocaml
+# let g = function
     | #myvariant as x -> g1 x
     | `Tag3 -> "Tag3";;
-
 val g : [< `Tag1 of int | `Tag2 of bool | `Tag3 ] -> string = <fun>
-
 ```
 
-### 4.2.1  Weaknesses of polymorphic variants
+### 4.2.1  多态变体的弱点
 
-After seeing the power of polymorphic variants, one may wonder why they were added to core language variants, rather than replacing them.
+在我们看到多态变体的威力以后，你也许会想为什么多态变体只是被加入核心语言变体，而没有代替全部核心类型。
 
-The answer is twofold. One first aspect is that while being pretty efficient, the lack of static type information allows for less optimizations, and makes polymorphic variants slightly heavier than core language ones. However noticeable differences would only appear on huge data structures.
+答案是双方面的。一方面，虽然这样是高效的，但是缺乏静态类型信息会影响优化，多态变体会比核心语言的类型稍稍大一点。更不用提在使用更大型数据的时候出现的差别了。
 
-More important is the fact that polymorphic variants, while being type-safe, result in a weaker type discipline. That is, core language variants do actually much more than ensuring type-safety, they also check that you use only declared constructors, that all constructors present in a data-structure are compatible, and they enforce typing constraints to their parameters.
+更加重要的一点是，多态变体虽然是类型安全的，但是是一种更弱的类型准则。也就是说，核心语言类型做了比保证类型安全更多的工作，他们也检查了你是否只声明了构造器，所有在数据结构中呈现的构造器都是合适的，他们强制保证了参数的类型限制。
 
-For this reason, you must be more careful about making types explicit when you use polymorphic variants. When you write a library, this is easy since you can describe exact types in interfaces, but for simple programs you are probably better off with core language variants.
+因为这样，你必须在使用多态变体的时候更加让类型明确。当你在写库的时候，因为要在借口中描述确切类型，所以不用担心这个，但是对于一般程序的书写，最好还是正对核心语言的变体来使用：
 
-Beware also that some idioms make trivial errors very hard to find. For instance, the following code is probably wrong but the compiler has no way to see it.
+同时也要注意，一些用法会造成极难发现的错误，举个例子来说，下列的代码可能是错误的，但是编译器没办法发现：
 
-```
- type abc = [`A | `B | `C] ;;
-
+```Ocaml
+# type abc = [`A | `B | `C] ;;
 type abc = [ `A | `B | `C ]
-
 ```
 
-```
- let f = function
+```Ocaml
+# let f = function
     | `As -> "A"
     | #abc -> "other" ;;
-
 val f : [< `A | `As | `B | `C ] -> string = <fun>
-
 ```
 
-```
- let f : abc -> string = f ;;
-
+```Ocaml
+# let f : abc -> string = f ;;
 val f : abc -> string = <fun>
-
 ```
 
 You can avoid such risks by annotating the definition itself.
 
-```
- let f : abc -> string = function
+```Ocaml
+# let f : abc -> string = function
     | `As -> "A"
     | #abc -> "other" ;;
-
 Error: This pattern matches values of type [? `As ]
        but a pattern was expected which matches values of type abc
        The second variant type does not allow tag(s) `As
-
 ```
-
-------
-
-- [1](https://caml.inria.fr/pub/docs/manual-ocaml/lablexamples.html#text1)
-
-  This correspond to the commuting label mode of Objective Caml 3.00 through 3.02, with some additional flexibility on total applications. The so-called classic mode (-nolabels options) is now deprecated for normal use.
