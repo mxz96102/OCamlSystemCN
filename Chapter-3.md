@@ -1439,7 +1439,7 @@ and widget : window -> object val window : window method window : window end
 
 ## 3.16  二元方法
 
-一个接受一个相同类型参数作为self的方法叫做二元方法。下面的comparable类是一个含有二元方法leq的类，在'a -> bool中的类型变量'a和self的类型是相关联的。于是#comparable 展开为了< leq : 'a -> bool; .. >来作为 'a的类型。这里的结合也可以接受相关类型。
+一个接受一个相同类型参数作为self的方法叫做二元方法。下面的comparable类是一个含有二元方法leq的类，在'a -> bool中的类型变量'a和self的类型是相关联的。于是#comparable 展开为了\< leq : 'a -> bool; .. >来作为 'a的类型。这里的结合也可以接受相关类型。
 
 ```ocaml
 # class virtual comparable =
