@@ -1,40 +1,28 @@
-# Chapter 6  Advanced examples with classes and modules
+# Chapter 6  类与模块进阶
 
-- [6.1  Extended example: bank accounts](https://caml.inria.fr/pub/docs/manual-ocaml/advexamples.html#sec62)
-- [6.2  Simple modules as classes](https://caml.inria.fr/pub/docs/manual-ocaml/advexamples.html#sec63)
-- [6.3  The subject/observer pattern](https://caml.inria.fr/pub/docs/manual-ocaml/advexamples.html#sec68)
+在这一章，我们将会展示一些使用类，对象，模块的更大型的例子。我们将通过银行账户的例子来回顾对象的特性。展示标准库的模型怎样用类来表示。最后，我们通过窗口管理器来描述一种被称为虚拟类型的编程模式。
 
-(Chapter written by Didier Rémy)
+## 6.1  类拓展示例：银行账户
 
-In this chapter, we show some larger examples using objects, classes and modules. We review many of the object features simultaneously on the example of a bank account. We show how modules taken from the standard library can be expressed as classes. Lastly, we describe a programming pattern known as *virtual types* through the example of window managers.
+在这一节，我们讲通过下面这个简单的英航账户例子来描述对象的大部分对象特性以及继承特效。（我们将重新使用我们在第三章使用过的Euro 模块）
 
-## 6.1  Extended example: bank accounts
-
-In this section, we illustrate most aspects of Object and inheritance by refining, debugging, and specializing the following initial naive definition of a simple bank account. (We reuse the module Euro defined at the end of chapter [3](https://caml.inria.fr/pub/docs/manual-ocaml/objectexamples.html#c%3Aobjectexamples).)
-
-```
- let euro = new Euro.c;;
-
+```ocaml
+# let euro = new Euro.c;;
 val euro : float -> Euro.c = <fun>
-
 ```
 
-```
- let zero = euro 0.;;
-
+```ocaml
+# let zero = euro 0.;;
 val zero : Euro.c = <obj>
-
 ```
 
-```
- let neg x = x#times (-1.);;
-
+```ocaml
+# let neg x = x#times (-1.);;
 val neg : < times : float -> 'a; .. > -> 'a = <fun>
-
 ```
 
-```
- class account =
+```ocaml
+# class account =
     object
       val mutable balance = zero
       method balance = balance
@@ -42,7 +30,6 @@ val neg : < times : float -> 'a; .. > -> 'a = <fun>
       method withdraw x =
         if x#leq balance then (balance <- balance # plus (neg x); x) else zero
     end;;
-
 class account :
   object
     val mutable balance : Euro.c
@@ -50,25 +37,21 @@ class account :
     method deposit : Euro.c -> unit
     method withdraw : Euro.c -> Euro.c
   end
-
 ```
 
-```
- let c = new account in c # deposit (euro 100.); c # withdraw (euro 50.);;
-
+```ocaml
+# let c = new account in c # deposit (euro 100.); c # withdraw (euro 50.);;
 - : Euro.c = <obj>
-
 ```
 
-We now refine this definition with a method to compute interest.
+我们现在重新定义了方法计算利息：
 
-```
- class account_with_interests =
+```ocaml
+# class account_with_interests =
     object (self)
       inherit account
       method private interest = self # deposit (self # balance # times 0.03)
     end;;
-
 class account_with_interests :
   object
     val mutable balance : Euro.c
@@ -77,20 +60,17 @@ class account_with_interests :
     method private interest : unit
     method withdraw : Euro.c -> Euro.c
   end
-
 ```
 
-We make the method interest private, since clearly it should not be called freely from the outside. Here, it is only made accessible to subclasses that will manage monthly or yearly updates of the account.
+我们将让interest方法私有，这个方法看起来不该让外部随意调用。在这里，它只能被子类调用用于每年/每月来更新账户。
 
-We should soon fix a bug in the current definition: the deposit method can be used for withdrawing money by depositing negative amounts. We can fix this directly:
-
-```
- class safe_account =
+我们需要处理一个当前定义的bug：存款方法可以被用来传入负数参数来取钱。我们可以直接修复：
+```ocaml
+# class safe_account =
     object
       inherit account
       method deposit x = if zero#leq x then balance <- balance#plus x
     end;;
-
 class safe_account :
   object
     val mutable balance : Euro.c
@@ -98,20 +78,18 @@ class safe_account :
     method deposit : Euro.c -> unit
     method withdraw : Euro.c -> Euro.c
   end
-
 ```
 
-However, the bug might be fixed more safely by the following definition:
+但是，下面这个定义的解决方法更加安全：
 
-```
- class safe_account =
+```ocaml
+# class safe_account =
     object
       inherit account as unsafe
       method deposit x =
         if zero#leq x then unsafe # deposit x
         else raise (Invalid_argument "deposit")
     end;;
-
 class safe_account :
   object
     val mutable balance : Euro.c
@@ -119,22 +97,19 @@ class safe_account :
     method deposit : Euro.c -> unit
     method withdraw : Euro.c -> Euro.c
   end
-
 ```
 
-In particular, this does not require the knowledge of the implementation of the method deposit.
+这样定义的方法做到了与deposit方法的实现无关。
 
-To keep track of operations, we extend the class with a mutable field history and a private method trace to add an operation in the log. Then each method to be traced is redefined.
+为了持续记录操作，我们将一个可变域用来跟踪调用历史，加上一个方法来记录操作的log。这样一来，每一个要追踪的方法都要被重新定义。
 
-```
- type 'a operation = Deposit of 'a | Retrieval of 'a;;
-
+```ocaml
+# type 'a operation = Deposit of 'a | Retrieval of 'a;;
 type 'a operation = Deposit of 'a | Retrieval of 'a
-
 ```
 
-```
- class account_with_history =
+```ocaml
+# class account_with_history =
     object (self)
       inherit safe_account as super
       val mutable history = []
@@ -143,7 +118,6 @@ type 'a operation = Deposit of 'a | Retrieval of 'a
       method withdraw x = self#trace (Retrieval x); super#withdraw x
       method history = List.rev history
     end;;
-
 class account_with_history :
   object
     val mutable balance : Euro.c
@@ -154,18 +128,16 @@ class account_with_history :
     method private trace : Euro.c operation -> unit
     method withdraw : Euro.c -> Euro.c
   end
-
 ```
 
-One may wish to open an account and simultaneously deposit some initial amount. Although the initial implementation did not address this requirement, it can be achieved by using an initializer.
+有人也许希望能够在开账户的同时存进一定的初始金额。虽然初始化定义也许不能满足这个需求，但是我们可以通过初始化器来实现
 
-```
- class account_with_deposit x =
+```ocaml
+# class account_with_deposit x =
     object
       inherit account_with_history
       initializer balance <- x
     end;;
-
 class account_with_deposit :
   Euro.c ->
   object
@@ -177,18 +149,16 @@ class account_with_deposit :
     method private trace : Euro.c operation -> unit
     method withdraw : Euro.c -> Euro.c
   end
-
 ```
 
-A better alternative is:
+一种更好的选择是：
 
-```
- class account_with_deposit x =
+```ocaml
+# class account_with_deposit x =
     object (self)
       inherit account_with_history
       initializer self#deposit x
     end;;
-
 class account_with_deposit :
   Euro.c ->
   object
@@ -200,35 +170,30 @@ class account_with_deposit :
     method private trace : Euro.c operation -> unit
     method withdraw : Euro.c -> Euro.c
   end
-
 ```
 
-Indeed, the latter is safer since the call to deposit will automatically benefit from safety checks and from the trace. Let’s test it:
+的确，因为调用deposit自带了安全检查和增加了追踪，所以后者更加安全，让我们来测试一下：
 
-```
- let ccp = new account_with_deposit (euro 100.) in
+```ocaml
+# let ccp = new account_with_deposit (euro 100.) in
   let _balance = ccp#withdraw (euro 50.) in
   ccp#history;;
-
 - : Euro.c operation list = [Deposit <obj>; Retrieval <obj>]
-
 ```
 
-Closing an account can be done with the following polymorphic function:
+关闭账户可以被下面的多态方法来解决：
 
-```
- let close c = c#withdraw c#balance;;
-
+```ocaml
+# let close c = c#withdraw c#balance;;
 val close : < balance : 'a; withdraw : 'a -> 'b; .. > -> 'b = <fun>
-
 ```
 
-Of course, this applies to all sorts of accounts.
+当然，这个适用于所有类型的账户。
 
-Finally, we gather several versions of the account into a module Account abstracted over some currency.
+最后，我们将多个版本的账户集中到一个模块，并且抽象出一些货币。
 
-```
- let today () = (01,01,2000) (* an approximation *)
+```ocaml
+# let today () = (01,01,2000) (* an approximation *)
   module Account (M:MONEY) =
     struct
       type m = M.c
@@ -281,38 +246,30 @@ Finally, we gather several versions of the account into a module Account abstrac
             if today() < (1998,10,30) then c # deposit (m 100.); c
         end
     end;;
-
-
 ```
 
-This shows the use of modules to group several class definitions that can in fact be thought of as a single unit. This unit would be provided by a bank for both internal and external uses. This is implemented as a functor that abstracts over the currency so that the same code can be used to provide accounts in different currencies.
+这里展示了该怎样使用模块将多各类成组的集中到一个单元中。这个单元可以提供给银行内部或者外部使用。实现了这样一个函子，就将货币抽象出来，相同的代码可以用于不同的货币。
 
-The class bank is the *real* implementation of the bank account (it could have been inlined). This is the one that will be used for further extensions, refinements, etc. Conversely, the client will only be given the client view.
+bank类是一个真实的银行账户实现，这里的实现可以被用于未来的拓展，改进等等。相反的，客户只会被给与客户端的视图：
 
-```
- module Euro_account = Account(Euro);;
-
-
+```ocaml
+# module Euro_account = Account(Euro);;
 ```
 
-```
- module Client = Euro_account.Client (Euro_account);;
-
-
+```ocaml
+# module Client = Euro_account.Client (Euro_account);;
 ```
 
-```
- new Client.account (new Euro.c 100.);;
-
-
+```ocaml
+# new Client.account (new Euro.c 100.);;
 ```
 
-Hence, the clients do not have direct access to the balance, nor the history of their own accounts. Their only way to change their balance is to deposit or withdraw money. It is important to give the clients a class and not just the ability to create accounts (such as the promotional discount account), so that they can personalize their account. For instance, a client may refine the deposit and withdraw methods so as to do his own financial bookkeeping, automatically. On the other hand, the function discountis given as such, with no possibility for further personalization.
+因此，客户并没有直接接触存款或者自己账户历史的权限。他们唯一可以改变自己存款的方法就是存钱或者取钱。非常重要的一点是：让客户有一个类而不是由能力去创建账户（例如推广用的打折账户），所以他们可以自己定义一些账户信息。举个例子来说，客户也许希望自己给劲存款和取款方法来自动记录他的经济流动。另一方面，我们提供了discountis方法，这个方法是没有办法被个人定义的。
 
-It is important to provide the client’s view as a functor Client so that client accounts can still be built after a possible specialization of the bank. The functor Client may remain unchanged and be passed the new definition to initialize a client’s view of the extended account.
+给客户视图提供一个Client函子也是很重要的，这样之后不同银行可以有不同的定制化。Client函子在之后也许会保留不变，或者被传向一个新的定义来初始化拓展后的账户用户视图。
 
-```
- module Investment_account (M : MONEY) =
+```ocaml
+# module Investment_account (M : MONEY) =
     struct
       type m = M.c
       module A = Account(M)
@@ -328,14 +285,12 @@ It is important to provide the client’s view as a functor Client so that clien
 
       module Client = A.Client
     end;;
-
-
 ```
 
-The functor Client may also be redefined when some new features of the account can be given to the client.
+函子Client也可以在一些新的特性加入账户的时候被改进后给用户。
 
-```
- module Internet_account (M : MONEY) =
+```ocaml
+# module Internet_account (M : MONEY) =
     struct
       type m = M.c
       module A = Account(M)
@@ -364,26 +319,23 @@ The functor Client may also be redefined when some new features of the account c
             end
         end
     end;;
-
-
 ```
 
-## 6.2  Simple modules as classes
+## 6.2  简单的模块即是类
 
-One may wonder whether it is possible to treat primitive types such as integers and strings as objects. Although this is usually uninteresting for integers or strings, there may be some situations where this is desirable. The class money above is such an example. We show here how to do it for strings.
+也许有人会想，我们是不是能把一些原生类型，比如整数，字符串来当做对象处理呢。虽然这样处理整数和字符串通常很无趣，但是的确在一些情况下是有这样的需求的。下面的money类就是一个例子，我们将在这里展示我们该怎样处理字符串。
 
-### 6.2.1  Strings
+### 6.2.1  字符串
 
-A naive definition of strings as objects could be:
+将字符串作为对象处理的原生定义可以是这样：
 
-```
+```ocaml
  class ostring s =
     object
        method get n = String.get s n
        method print = print_string s
        method escaped = new ostring (String.escaped s)
     end;;
-
 class ostring :
   string ->
   object
@@ -391,18 +343,16 @@ class ostring :
     method get : int -> char
     method print : unit
   end
-
 ```
 
-However, the method escaped returns an object of the class ostring, and not an object of the current class. Hence, if the class is further extended, the method escaped will only return an object of the parent class.
+但是，escaped返回的是一个ostring类的对象，而并非当前类的对象。因此，如果一个类是由多次的extend的到的，那么escaped方法只会返回这个对象的父类。
 
-```
- class sub_string s =
+```ocaml
+# class sub_string s =
     object
        inherit ostring s
        method sub start len = new sub_string (String.sub s  start len)
     end;;
-
 class sub_string :
   string ->
   object
@@ -411,13 +361,12 @@ class sub_string :
     method print : unit
     method sub : int -> int -> sub_string
   end
-
 ```
 
-As seen in section [3.16](https://caml.inria.fr/pub/docs/manual-ocaml/objectexamples.html#ss%3Abinary-methods), the solution is to use functional update instead. We need to create an instance variable containing the representation s of the string.
+正如在3.16中我们看到过的那样，解决方案就是使用函数，我们需要创建一个包含字符串s引用的实例变量。
 
-```
- class better_string s =
+```ocaml
+ # class better_string s =
     object
        val repr = s
        method get n = String.get repr n
@@ -425,7 +374,6 @@ As seen in section [3.16](https://caml.inria.fr/pub/docs/manual-ocaml/objectexam
        method escaped = {< repr = String.escaped repr >}
        method sub start len = {< repr = String.sub s start len >}
     end;;
-
 class better_string :
   string ->
   object ('a)
@@ -435,15 +383,14 @@ class better_string :
     method print : unit
     method sub : int -> int -> 'a
   end
-
 ```
 
-As shown in the inferred type, the methods escaped and sub now return objects of the same type as the one of the class.
+正如在推断类型中显示的那样，escaped和sub方法现在返回值类型是和输入类相同的类型。
 
-Another difficulty is the implementation of the method concat. In order to concatenate a string with another string of the same class, one must be able to access the instance variable externally. Thus, a method repr returning s must be defined. Here is the correct definition of strings:
+另一个很难实现的地方就是concat方法。为了确定一个字符串和另一个字符串是同一个类的，我们需要去从外部访问实例变量。这样以来，我们需要定义一个返回s的方法repr。下面是正确的字符串类定义：
 
-```
- class ostring s =
+```ocaml
+# class ostring s =
     object (self : 'mytype)
        val repr = s
        method repr = repr
@@ -453,7 +400,6 @@ Another difficulty is the implementation of the method concat. In order to conca
        method sub start len = {< repr = String.sub s start len >}
        method concat (t : 'mytype) = {< repr = repr ^ t#repr >}
     end;;
-
 class ostring :
   string ->
   object ('a)
@@ -465,33 +411,28 @@ class ostring :
     method repr : string
     method sub : int -> int -> 'a
   end
-
 ```
 
-Another constructor of the class string can be defined to return a new string of a given length:
+另一个string类的构造器可以被定义为返回一个定长的字符串。
 
-```
- class cstring n = ostring (String.make n ' ');;
-
+```ocaml
+# class cstring n = ostring (String.make n ' ');;
 class cstring : int -> ostring
-
 ```
 
-Here, exposing the representation of strings is probably harmless. We do could also hide the representation of strings as we hid the currency in the class money of section [3.17](https://caml.inria.fr/pub/docs/manual-ocaml/objectexamples.html#ss%3Afriends).
+在这里，将字符串的引用暴露出来基本上没有影响，我们也可以使用3.17的方法把引用隐藏起来。
 
-#### Stacks
+#### 栈
 
-There is sometimes an alternative between using modules or classes for parametric data types. Indeed, there are situations when the two approaches are quite similar. For instance, a stack can be straightforwardly implemented as a class:
+有时候，我们在表述参数方程的数据类型的时候，模块和类都是可选的。所以，在一些情况下，这两种方法非常相似。举个例子，一个栈可以直接通过类来实现：
 
-```
- exception Empty;;
-
+```ocaml
+# exception Empty;;
 exception Empty
-
 ```
 
-```
- class ['a] stack =
+```ocaml
+# class ['a] stack =
     object
       val mutable l = ([] : 'a list)
       method push x = l <- x::l
@@ -499,7 +440,6 @@ exception Empty
       method clear = l <- []
       method length = List.length l
     end;;
-
 class ['a] stack :
   object
     val mutable l : 'a list
@@ -508,18 +448,16 @@ class ['a] stack :
     method pop : 'a
     method push : 'a -> unit
   end
-
 ```
 
-However, writing a method for iterating over a stack is more problematic. A method fold would have type ('b -> 'a -> 'b) -> 'b -> 'b. Here 'a is the parameter of the stack. The parameter 'b is not related to the class 'a stack but to the argument that will be passed to the method fold. A naive approach is to make 'b an extra parameter of class stack:
+但是，在书写一个遍历栈的方法时候，我们会遇到一些问题。fold方法的类型是('b -> 'a -> 'b) -> 'b -> 'b。在这里，'a是栈的类型参数，但是'b并不和'a类相关但是却作为参数传给了fold。一个初步的方法就是将'b作为额外参数加入stack类中：
 
-```
- class ['a, 'b] stack2 =
+```ocaml
+# class ['a, 'b] stack2 =
     object
       inherit ['a] stack
       method fold f (x : 'b) = List.fold_left f x l
     end;;
-
 class ['a, 'b] stack2 :
   object
     val mutable l : 'a list
@@ -529,42 +467,36 @@ class ['a, 'b] stack2 :
     method pop : 'a
     method push : 'a -> unit
   end
-
 ```
 
-However, the method fold of a given object can only be applied to functions that all have the same type:
+可是，fold方法对于给定的对象只能将方法应用于相同的类型：
 
-```
- let s = new stack2;;
-
+```ocaml
+# let s = new stack2;;
 val s : ('_weak1, '_weak2) stack2 = <obj>
-
 ```
 
-```
- s#fold ( + ) 0;;
-
+```ocaml
+# s#fold ( + ) 0;;
 - : int = 0
-
 ```
 
-```
- s;;
-
+```ocaml
+# s;;
 - : (int, int) stack2 = <obj>
-
 ```
 
-A better solution is to use polymorphic methods, which were introduced in OCaml version 3.05. Polymorphic methods makes it possible to treat the type variable 'b in the type of fold as universally quantified, giving fold the polymorphic type Forall 'b. ('b -> 'a -> 'b) -> 'b -> 'b. An explicit type declaration on the method fold is required, since the type checker cannot infer the polymorphic type by itself.
+在OCaml3.05版本中加入的多态方法，就可以很好的解决这个问题。
 
-```
- class ['a] stack3 =
+多态方法让fold方法的类型变量'b可以从全局上验证，并且给予所有fold方法 'b. ('b -> 'a -> 'b) -> 'b -> 'b多态类型。但是在这里，我们需要给fold书写一个明确的类型声明，因为类型检查起不能自己推断多态类型。
+
+```ocaml
+# class ['a] stack3 =
     object
       inherit ['a] stack
       method fold : 'b. ('b -> 'a -> 'b) -> 'b -> 'b
                   = fun f x -> List.fold_left f x l
     end;;
-
 class ['a] stack3 :
   object
     val mutable l : 'a list
@@ -574,43 +506,38 @@ class ['a] stack3 :
     method pop : 'a
     method push : 'a -> unit
   end
-
 ```
 
-### 6.2.2  Hashtbl
+### 6.2.2  哈希表
 
-A simplified version of object-oriented hash tables should have the following class type.
+一个简单版本的面向对象哈希表应该具有如下类的类型：
 
-```
- class type ['a, 'b] hash_table =
+```ocaml
+# class type ['a, 'b] hash_table =
     object
       method find : 'a -> 'b
       method add : 'a -> 'b -> unit
     end;;
-
 class type ['a, 'b] hash_table =
   object method add : 'a -> 'b -> unit method find : 'a -> 'b end
-
 ```
 
-A simple implementation, which is quite reasonable for small hash tables is to use an association list:
+一个简单的实现例子，对于小规模的哈希表我们可以使用相关列表：
 
-```
- class ['a, 'b] small_hashtbl : ['a, 'b] hash_table =
+```ocaml
+# class ['a, 'b] small_hashtbl : ['a, 'b] hash_table =
     object
       val mutable table = []
       method find key = List.assoc key table
       method add key valeur = table <- (key, valeur) :: table
     end;;
-
 class ['a, 'b] small_hashtbl : ['a, 'b] hash_table
-
 ```
 
-A better implementation, and one that scales up better, is to use a true hash table… whose elements are small hash tables!
+一个更好的实现就是，实现一个真正哈希表并且他的元素是小规模哈希表，
 
-```
- class ['a, 'b] hashtbl size : ['a, 'b] hash_table =
+```ocaml
+# class ['a, 'b] hashtbl size : ['a, 'b] hash_table =
     object (self)
       val table = Array.init size (fun i -> new small_hashtbl)
       method private hash key =
@@ -618,21 +545,19 @@ A better implementation, and one that scales up better, is to use a true hash ta
       method find key = table.(self#hash key) # find key
       method add key = table.(self#hash key) # add key
     end;;
-
 class ['a, 'b] hashtbl : int -> ['a, 'b] hash_table
-
 ```
 
-### 6.2.3  Sets
+### 6.2.3  集合
 
-Implementing sets leads to another difficulty. Indeed, the method union needs to be able to access the internal representation of another object of the same class.
+实现集合将问题带向了新的难度。因为在做并运算的时候，我们需要访问同一个类的其他对象引用。
 
-This is another instance of friend functions as seen in section [3.17](https://caml.inria.fr/pub/docs/manual-ocaml/objectexamples.html#ss%3Afriends). Indeed, this is the same mechanism used in the module Set in the absence of objects.
+这是在3.17节所提到的友函数的一个实例，这是一种在集合模块里面普遍使用的，用于确定对象缺失的方法。
 
-In the object-oriented version of sets, we only need to add an additional method tag to return the representation of a set. Since sets are parametric in the type of elements, the method tag has a parametric type 'a tag, concrete within the module definition but abstract in its signature. From outside, it will then be guaranteed that two objects with a method tag of the same type will share the same representation.
+在面向对象版本的集合中，我们只需要添加tag方法，来返回集合的类型引用。因为集合是依赖元素的的类型来计算类型的，tag方法也拥有一个计算类型'a tag，虽然在模块里是明确的，但是依然是抽象的签名。在外部看来，这样保证了两个拥有同样tag类型的对象会共用一个模块引用。
 
-```
- module type SET =
+```ocaml
+# module type SET =
     sig
       type 'a tag
       class ['a] c :
@@ -645,12 +570,10 @@ In the object-oriented version of sets, we only need to add an additional method
           method tag : 'a tag
         end
     end;;
-
-
 ```
 
-```
- module Set : SET =
+```ocaml
+# module Set : SET =
     struct
       let rec merge l1 l2 =
         match l1 with
@@ -674,38 +597,33 @@ In the object-oriented version of sets, we only need to add an additional method
           method tag = repr
         end
     end;;
-
-
 ```
 
-## 6.3  The subject/observer pattern
+## 6.3  观察者模式
 
-The following example, known as the subject/observer pattern, is often presented in the literature as a difficult inheritance problem with inter-connected classes. The general pattern amounts to the definition a pair of two classes that recursively interact with one another.
+接下来的例子是关于观察者模式的，观察者模式常用于解决有内部关联的复杂继承问题。这种情况的一个普遍模式就是两个互相递归依赖的类。
 
-The class observer has a distinguished method notify that requires two arguments, a subject and an event to execute an action.
+observer类有一个独立的notify方法，要求传入主体和事件来执行一个动作。
 
-```
- class virtual ['subject, 'event] observer =
+```ocaml
+# class virtual ['subject, 'event] observer =
     object
       method virtual notify : 'subject ->  'event -> unit
     end;;
-
 class virtual ['subject, 'event] observer :
   object method virtual notify : 'subject -> 'event -> unit end
-
 ```
 
-The class subject remembers a list of observers in an instance variable, and has a distinguished method notify_observers to broadcast the message notify to all observers with a particular event e.
+这个类在实例变量中记录了一个observer列表，还拥有一个独立方法notify_observers，在特定事件e触发时候来广播消息。
 
-```
- class ['observer, 'event] subject =
+```ocaml
+# class ['observer, 'event] subject =
     object (self)
       val mutable observers = ([]:'observer list)
       method add_observer obs = observers <- (obs :: observers)
       method notify_observers (e : 'event) =
           List.iter (fun x -> x#notify self e) observers
     end;;
-
 class ['a, 'event] subject :
   object ('b)
     constraint 'a = < notify : 'b -> 'event -> unit; .. >
@@ -713,35 +631,28 @@ class ['a, 'event] subject :
     method add_observer : 'a -> unit
     method notify_observers : 'event -> unit
   end
-
 ```
 
-The difficulty usually lies in defining instances of the pattern above by inheritance. This can be done in a natural and obvious manner in OCaml, as shown on the following example manipulating windows.
+复杂的地方在于怎样定义继承了这种模式的实例。在OCaml里，可以通过一种简单的方式进行，正如下面的窗口操作例子一样：
 
-```
- type event = Raise | Resize | Move;;
-
+```ocaml
+# type event = Raise | Resize | Move;;
 type event = Raise | Resize | Move
-
 ```
 
-```
- let string_of_event = function
+```ocaml
+# let string_of_event = function
       Raise -> "Raise" | Resize -> "Resize" | Move -> "Move";;
-
 val string_of_event : event -> string = <fun>
-
 ```
 
-```
- let count = ref 0;;
-
+```ocaml
+# let count = ref 0;;
 val count : int ref = {contents = 0}
-
 ```
 
-```
- class ['observer] window_subject =
+```ocaml
+# class ['observer] window_subject =
     let id = count := succ !count; !count in
     object (self)
       inherit ['observer, event] subject
@@ -750,7 +661,6 @@ val count : int ref = {contents = 0}
       method move x = position <- position + x; self#notify_observers Move
       method draw = Printf.printf "{Position = %d}\n"  position;
     end;;
-
 class ['a] window_subject :
   object ('b)
     constraint 'a = < notify : 'b -> event -> unit; .. >
@@ -762,62 +672,51 @@ class ['a] window_subject :
     method move : int -> unit
     method notify_observers : event -> unit
   end
-
 ```
 
-```
- class ['subject] window_observer =
+```ocaml
+# class ['subject] window_observer =
     object
       inherit ['subject, event] observer
       method notify s e = s#draw
     end;;
-
 class ['a] window_observer :
   object
     constraint 'a = < draw : unit; .. >
     method notify : 'a -> event -> unit
   end
-
 ```
 
-As can be expected, the type of window is recursive.
+正如所预料的，window的类型是递归定义的
 
-```
- let window = new window_subject;;
-
+```ocaml
+# let window = new window_subject;;
 val window : < notify : 'a -> event -> unit; _.. > window_subject as 'a =
   <obj>
-
 ```
 
 However, the two classes of window_subject and window_observer are not mutually recursive.
 
-```
- let window_observer = new window_observer;;
-
+```ocaml
+# let window_observer = new window_observer;;
 val window_observer : < draw : unit; _.. > window_observer = <obj>
-
 ```
 
-```
- window#add_observer window_observer;;
-
+```ocaml
+# window#add_observer window_observer;;
 - : unit = ()
-
 ```
 
-```
- window#move 1;;
-
+```ocaml
+# window#move 1;;
 {Position = 1}
 - : unit = ()
-
 ```
 
-Classes window_observer and window_subject can still be extended by inheritance. For instance, one may enrich the subject with new behaviors and refine the behavior of the observer.
+window_observer和window_subject两个类依然可以通过继承拓展。下面这个例子，丰富了窗口主体，改进了observer的行为。
 
 ```
- class ['observer] richer_window_subject =
+# class ['observer] richer_window_subject =
     object (self)
       inherit ['observer] window_subject
       val mutable size = 1
@@ -826,7 +725,6 @@ Classes window_observer and window_subject can still be extended by inheritance.
       method raise = top <- true; self#notify_observers Raise
       method draw = Printf.printf "{Position = %d; Size = %d}\n"  position size;
     end;;
-
 class ['a] richer_window_subject :
   object ('b)
     constraint 'a = < notify : 'b -> event -> unit; .. >
@@ -842,64 +740,52 @@ class ['a] richer_window_subject :
     method raise : unit
     method resize : int -> unit
   end
-
 ```
 
-```
- class ['subject] richer_window_observer =
+```ocaml
+# class ['subject] richer_window_observer =
     object
       inherit ['subject] window_observer as super
       method notify s e = if e <> Raise then s#raise; super#notify s e
     end;;
-
 class ['a] richer_window_observer :
   object
     constraint 'a = < draw : unit; raise : unit; .. >
     method notify : 'a -> event -> unit
   end
-
 ```
 
-We can also create a different kind of observer:
+我们也可以创建另一种observer：
 
-```
- class ['subject] trace_observer =
+```ocaml
+# class ['subject] trace_observer =
     object
       inherit ['subject, event] observer
       method notify s e =
         Printf.printf
           "<Window %d <== %s>\n" s#identity (string_of_event e)
     end;;
-
 class ['a] trace_observer :
   object
     constraint 'a = < identity : int; .. >
     method notify : 'a -> event -> unit
   end
-
 ```
 
-and attach several observers to the same object:
+并且可以将多个observer连接到同一个对象上：
 
-```
- let window = new richer_window_subject;;
-
+```ocaml
+# let window = new richer_window_subject;;
 val window :
   < notify : 'a -> event -> unit; _.. > richer_window_subject as 'a = <obj>
-
 ```
 
-```
- window#add_observer (new richer_window_observer);;
-
+```ocaml
+# window#add_observer (new richer_window_observer);;
 - : unit = ()
-
- window#add_observer (new trace_observer);;
-
+# window#add_observer (new trace_observer);;
 - : unit = ()
-
- window#move 1; window#resize 2;;
-
+# window#move 1; window#resize 2;;
 <Window 1 <== Move>
 <Window 1 <== Raise>
 {Position = 1; Size = 1}
