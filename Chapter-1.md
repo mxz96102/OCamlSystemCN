@@ -10,8 +10,6 @@
 
 [TOC]
 
-
-
 ## 1.1  基础部分
 
 为了对OCaml语言有一个很直接的了解，我们使用交互系统来实践代码。如果是在Linux，Unix下，则是在ocaml的命令行界面运行，如果是在Windows下，则是使用 OCamlwin.exe 来运行。本教程将会展示所有输入以及输出来展示结果，#开头的语句代表用户的输入，紧接着没有#的段落则是输出。
@@ -176,9 +174,9 @@ val cos2 : float -> float = <fun>
 val map : ('a -> 'b) -> 'a list -> 'b list = <fun>
 ```
 
-## 1.4  Records 和 variants
+## 1.4  Records 和 变体
 
-用户自定义的数据结构包括 records 和 variants，他们都是使用type来声明的，这里我们定义了一个record类型来代表无理数。
+用户自定义的数据结构包括 records 和 变体，他们都是使用type来声明的，这里我们定义了一个record类型来代表无理数。
 
 ```ocaml
 # type ratio = {num: int; denom: int};;
