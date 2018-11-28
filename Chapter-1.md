@@ -1,20 +1,14 @@
-> 这学期的算法，编译这些不限语言的课，我基本都用了ocaml自己写（这样就不会被同学要代码了）
->
-> 之前我在JavaScript写函数式，总觉着怪怪的，直到我找到了OCaml
->
-> 虽然这个语言和我一样大，但是普及度堪忧。。。这学期一份安利都没有卖出去
->
-> 为了深入学习OCaml，我翻译了文档
-
 # 第一章 核心语言部分
 
-[TOC]
+本章节主要介绍OCaml语言的基础入门部分，从最简单的数学运算，到最后的一个简单的编译器，读者可以通过实践对OCaml语言有一个基础认识。
 
 ## 1.1  基础部分
 
-为了对OCaml语言有一个很直接的了解，我们使用交互系统来实践代码。如果是在Linux，Unix下，则是在ocaml的命令行界面运行，如果是在Windows下，则是使用 OCamlwin.exe 来运行。本教程将会展示所有输入以及输出来展示结果，#开头的语句代表用户的输入，紧接着没有#的段落则是输出。
+首先，为了让大家对OCaml语言有一个很直接的了解，本书中的大部分代码都可以通过命令行工具来实时实践。如果你使用的是Linux或者Unix，那么在命令行中输入`ocaml`命令就可以开始实践，若你使用的是windows系统，则是通过OCamlwin.exe来运行相应的功能。
 
-在这个交互系统中，用户输入的OCaml语句会被;;结束，然后输出相应的结果。系统是实时编译执行，并打印出结果。语句一般是表达式或者是let定义式（定义值或者函数）。
+本教程的代码段将会同时展示输入和输出的代码。`#`开头的代码段落为输入，随后的段落表示相应的输出。在这个命令行工具中，用户输入的OCaml语句会被`;;`结束，然后输出相应的结果。这个工具是实时编译执行，实时输出结果的。
+
+在OCaml语言中，语句一般是表达式或者是`let`定义式（用于定义值或者函数）。
 
 ```ocaml
 # 1+2*3;;
@@ -36,14 +30,15 @@ val square : float -> float = <fun>
 - : float = 1.
 ```
 
-OCaml 系统会在解析的时候分析每一个短语的类型和值，就连函数的参数都需要详细的类型声明：系统也会根据他们在函数之中的使用来推断他的类型。需要注意的是，整数和浮点数是两个分开的类型，我们使用+和*来操作整数，+.和\*.来操作浮点数。
+OCaml 系统会得出每一个语句的值及其类型，包括函数的参数都会有详细的类型声明。系统根据他们在函数之中的使用来推断类型，或者根据你书写的声明来得出类型。需要注意的是，在OCaml中，整数和浮点数是两个分开的类型，我们使用`+`和`*`来操作整数，`+.`和`*.`来操作浮点数。
 
 ```Ocaml
 # 1.0 * 2;;
 Error: This expression has type float but an expression was expected of type int
+(*表达式包含float类型，但是表达式要求int类型的参数*)
 ```
 
-递归函数需要在声明时候绑定rec关键字：
+使用`rec`关键字来声明递归函数：
 
 ```ocaml
 # let rec fib n =
@@ -58,7 +53,7 @@ val fib : int -> int = <fun>
 
 ## 1.2  数据类型
 
-除了整数和浮点数，OCaml还提供了一些其他的基本数据类型：布尔值，字符，和不可改变的字符串。
+除了整数和浮点数，OCaml还提供了一些其他的基本数据类型：布尔值，字符，和字符串（不可改变的）。
 
 ```ocaml
 # (1 < 2) = false;;
@@ -75,21 +70,27 @@ val fib : int -> int = <fun>
 - : string = "Hello world"
 ```
 
-预定义的数据结构包括了turples，array，list。当然你也可以定义你自己的数据结构，这在之后的内容中会有更多细节。但是现在，我们先来看看list。list一般是用中括号括起来，用分号彼此分开声明的，或者是通过\[\](叫做‘nil’)，通过 :: 操作符加上数据来创建。
+OCaml内建的数据结构包括了`turples`，`array`，`list`。你也可以定义你自己的数据结构，在之后的章节将会有更多相关细节。但是现在，我们先来看看`list`。
+
+list一般是用中括号括起来，用分号彼此分开声明的一串相同数据类型的数据，或者直接用`[]`（称作‘nil’），通过`::` 操作符加上数据。
 
 ```ocaml
 # let l = ["is"; "a"; "tale"; "told"; "etc."];;
 val l : string list = ["is"; "a"; "tale"; "told"; "etc."]
+(*直接书写的模式*)
 ```
 
 ```ocaml
 # "Life" :: l;;
 - : string list = ["Life"; "is"; "a"; "tale"; "told"; "etc."]
+(*通过::来创建的模式*)
 ```
 
-其他OCaml 数据结构和list类似，都不需要分别的为他们申请内存空间，内存管理机制也自动的由OCaml执行。类似的，OCaml也不用单独处理指针，在编译的时候，OCaml会在必要时静默的引入指针。
+其他OCaml 数据结构和`list`类似，都不需要单独的为他们申请内存空间，内存管理也自动的由OCaml执行。OCaml也不用单独处理指针，在编译的时候，OCaml会在必要时静默的引入指针。
 
-同样的，这些数据结构也会和list一样，通过模式识别来监听和销毁。list的模式和list的表达式是一样的，通过一些标识符来代表一些非特定的区域，我们可以操作list。下面是一个插入排序的例子：
+其他数据结构也能和`list`一样，通过模式识别来监听和销毁。list的模式和list的表达式是一样的，可以通过一些标识符来代表一些泛指的区域。
+
+下面是一个插入排序的例子：
 
 ```ocaml
 # let rec sort lst =
@@ -110,7 +111,7 @@ val insert : 'a -> 'a list -> 'a list = <fun>
 - : string list = ["a"; "etc."; "is"; "tale"; "told"]
 ```
 
-排序的类型推断是：'a list -> 'a list，这就是说这个排序算法可以应用于任何包含同类型变量的list，类型 'a 是一个 a 类型变量，可以代表任何一个给定的type。这个排序可以使用到任意类型list的原因是，比较操作符在OCaml里面实现了多态：他可以接收任意两个相同类型的变量，并返回布尔值。这就使得排序函数也是多态的。
+上面所写排序函数的类型推断为：`'a list -> 'a list`，这就意味着`sort`函数可以应用于任何包含同类型变量的`list`，类型 `'a` 是一个 `a` 类型变量，可以代表任何一个给定的类型。这个排序可以使用到任意类型`list`的原因是，比较操作符在OCaml里面实现了多态：他可以接收任意两个相同类型的变量，并返回布尔值。这就使得排序函数也是多态的。
 
 ```ocaml
 # sort [6;2;5;3];;
@@ -122,13 +123,13 @@ val insert : 'a -> 'a list -> 'a list = <fun>
 - : float list = [2.718; 3.14]
 ```
 
-排序算法并没有修改原来的list，它返回了一个包含了和输入list具有同样元素的list。实际上在OCaml之中，list在创建之后就无法再被改变了，是一种不可变的数据结构。大部分OCaml数据结构都是不可变的，但是一些数据结构（主要是数组）是可变的，也就是说他们可以随时被改变。
+排序算法并没有修改原来的`list`，它返回了一个包含了和输入`list`具有同样元素的`list`。实际上在OCaml之中，`list`在创建之后就无法再被改变了，是一种不可变的数据结构。大部分OCaml数据结构都是不可变的，但是在OCaml中也存在一些数据结构（主要是数组）是可变的。
 
 
 
 ## 1.3  函数亦是值
 
-OCaml是一门函数式编程语言：函数应该和其他数学值一样，可以作为一部分数据，并且可以被自由的传递。举个例子来说，这里有一个 deriv 函数接收任意浮点数函数作为参数，并且返回计算结果：
+OCaml是一门函数式编程语言：函数应该和其他值一样，可以作为数据，并且可以被自由的传递。举个例子来说，这里有一个 `deriv` 函数接收任意浮点数函数作为参数，并且返回计算结果：
 
 ```Ocaml
 # let deriv f dx = function x -> (f (x +. dx) -. f x) /. dx;;
@@ -157,14 +158,14 @@ val compose : ('a -> 'b) -> ('c -> 'a) -> 'c -> 'b = <fun>
 val cos2 : float -> float = <fun>
 ```
 
-接受函数作为参数的函数叫做“高阶函数”，高阶函数在遍历和操作数据结构方面有很大的用处。举个例子，OCaml标准库提供了一个List.map 函数来接受一个函数遍历List，并返回结果。
+接受函数作为参数的函数叫做“高阶函数”，高阶函数在遍历和操作数据结构方面有很大的用处。举个例子，OCaml标准库提供了一个`List.map` 函数来接受一个函数遍历`List`，并返回结果。
 
 ```ocaml
 # List.map (function n -> n * 2 + 1) [0;1;2;3;4];;
 - : int list = [1; 3; 5; 7; 9]
 ```
 
-这个有用的高阶函数，已经被预定义为list和array的库函数，但是其实它也不是很高深的技巧，可以很简单的定义为：
+这个实用的高阶函数，已经被预定义为`list`和`array`的库函数，但是其实它也不是很高深的技巧，可以很简单的定义为：
 
 ```ocaml
 # let rec map f l =
@@ -176,7 +177,7 @@ val map : ('a -> 'b) -> 'a list -> 'b list = <fun>
 
 ## 1.4  Records 和 变体
 
-用户自定义的数据结构包括 records 和 变体，他们都是使用type来声明的，这里我们定义了一个record类型来代表无理数。
+用户自定义的数据结构主要包含 records 和 变体（variant），他们都是使用type来声明的，例如定义一个record类型来代表无理数。
 
 ```ocaml
 # type ratio = {num: int; denom: int};;
@@ -211,28 +212,28 @@ val integer_part : ratio -> int = <fun>
 val integer_part : ratio -> int = <fun>
 ```
 
-没有用到的量可以被省去：
+没有用到的值可以被省略：
 
 ```ocaml
 # let get_denom {denom=denom} = denom;;
 val get_denom : ratio -> int = <fun>
 ```
 
-同样的，没有用到的量也可以通过 _ 通配符来舍去
+同样的，没有用到的值也可以通过 _ 通配符来省略：
 
 ```ocaml
 # let get_num {num=num; _ } = num;;
 val get_num : ratio -> int = <fun>
 ```
 
-如果 = 两边都变量名称是相同的，我们可以不用那么麻烦的写法：
+如果 = 两边都变量名称是相同的，我们可以采用更简单的写法：
 
 ```ocaml
 # let integer_part {num; denom} = num / denom;;
 val integer_part : ratio -> int = <fun>
 ```
 
-这种话简写的方法同样适用于使用函数来构造record：
+这种简写的方法同样适用于使用函数来构造record：
 
 ```ocaml
 # let ratio num denom = {num; denom};;
@@ -246,18 +247,18 @@ val ratio : int -> int -> ratio = <fun>
 val integer_product : int -> ratio -> ratio = <fun>
 ```
 
-with这个函数符号，接受左边的值并且copy后更新右边的量，最终返回这个record。
+`with`这个函数符号，接受左边的值并且复制后更新右边的量，最终返回新的record。
 
-variant的声明则是列出了所有可能的该类型的值，每一种都由构造器和它所对应的实际类型来对应，构造器通过开头大写来与变量名做出区分。
+变体的声明则是列出了该类型所有可能的值，每一种都由构造器和它所对应的实际类型来对应，构造器名称通过开头大写来与变量名做出区分。
 
 ```ocaml
 # type number = Int of int | Float of float | Error;;
 type number = Int of int | Float of float | Error
 ```
 
-这个声明表达了number类型的值可以是整型，浮点数或者一个常量成为Error（通常是非法操作获得的，比如除以0）。
+上面的声明表示number类型的值可以是整型，浮点数或者一个常量Error（通常是非法操作获得的，比如除以0）。
 
-枚举类型是一种variant的特殊用法：
+枚举类型是一种变体的特殊用法：
 
 ```ocaml
 # type sign = Positive | Negative;;
@@ -292,30 +293,31 @@ val add_num : number -> number -> number = <fun>
 - : number = Float 126.14159
 ```
 
-另一个有趣的例子就是，内建的可选类型，它代表了是返回了一个值还是没有返回值：
+另一个有趣的例子就是，OCaml内建的可选类型，它用于表示是返回了一个值还是没有返回值：
 
 ```ocaml
 # type 'a option = Some of 'a | None;;
 type 'a option = Some of 'a | None
 ```
 
-这个类型在判断一些会失败的函数上有很大作用，例如：
+这个类型对于有异常情况的函数有很大作用，例如：
 
 ```ocaml
 # let safe_square_root x = if x > 0. then Some(sqrt x) else None;;
 val safe_square_root : float -> float option = <fun>
+(*这里避免了开方负数所会抛出的错误*)
 ```
 
-最常见的variant类型使用还是在描述递归数据结构上，例如一个二叉树：
+变体类型经常被用在描述递归数据结构上，例如一个二叉树：
 
 ```ocaml
 # type 'a btree = Empty | Node of 'a * 'a btree * 'a btree;;
 type 'a btree = Empty | Node of 'a * 'a btree * 'a btree
 ```
 
-这个定义应该这样解释：一个二叉树节点可以是Empty，特可以是一个可选类型的值，和两个该类型的节点。
+这个定义的意思是：一个二叉树节点可以是`Empty`，也可以是一个可选类型的值，和两个该类型的节点。
 
-对于二叉树的操作本来就是以递归的方式定义的，举个例子，在二分树进行查找和插入：
+同样对于二叉树的操作本来就是以递归的方式定义的，举个例子，在二分树进行查找和插入：
 
 ```ocaml
 # let rec member x btree =
@@ -337,9 +339,9 @@ val member : 'a -> 'a btree -> bool = <fun>
 val insert : 'a -> 'a btree -> 'a btree = <fun>
 ```
 
-## 1.5  指令式编程
+## 1.5  命令式编程
 
-到此为止的很多例子，我们都是使用纯声明式编程来写的。OCaml同时也具有完整的指令式编程的特性。包括但不限于，while和for循环，可变的数据结构array。array被以[|和|]声明，他也可以使用Array.make函数来创建一个array。举个例子，下面就是两个向量的加法：
+到此为止的很多例子，我们都是使用纯声明式编程来写的。OCaml同时也具有完整的命令式编程的特性。包括但不限于，while和for循环，可变的数据结构array。array被以`[|`和`|]`声明，他也可以使用`Array.make`函数来创建一个array。举个例子，下面就是两个向量的加法：
 
 ```ocaml
 # let add_vect v1 v2 =
@@ -363,7 +365,6 @@ record类型同样也可以被改变，这里提供了可变化的声明来定�
 # type mutable_point = { mutable x: float; mutable y: float };;
 
 type mutable_point = { mutable x : float; mutable y : float; }
-
 ```
 
 ```Ocaml
@@ -387,7 +388,7 @@ val mypoint : mutable_point = {x = 0.; y = 0.}
 - : mutable_point = {x = 1.; y = 2.}
 ```
 
-OCaml 有内建的变量概念，变量可以被赋值（let 绑定并不是一种赋值语句，他只是把新的标记符带进作用域）。然而，标准库提供了参照，它是一个不确定的单元（或者是单元素数组），通过 ! 来得到变量的内容，通过 := 来赋值变量的内容。通过参照来获取变量内容并且修改内容，下面是一个插入排序的例子：
+OCaml 有内建的变量概念，变量可以被赋值（let 绑定并不是一种赋值语句，他只是把新的标记符带进作用域）。然而，标准库提供了引用，它是一个不确定的单元（可以理解为单元素数组），通过 `! `来得到变量的内容，通过 `:=` 来赋值变量的内容。通过引用来获取变量内容并且修改内容，下面是一个插入排序的例子：
 
 ```ocaml
 # let insertion_sort a =
@@ -403,7 +404,7 @@ OCaml 有内建的变量概念，变量可以被赋值（let 绑定并不是一�
 val insertion_sort : 'a array -> unit = <fun>
 ```
 
-参照对于包含外来状态的函数有很大作用，例如一下生成伪随机数的例子，最后返回的是参照的值：
+引用对于包含外来状态的函数有很大作用，例如下面这个生成伪随机数的例子，最后返回的是引用的值：
 
 ```ocaml
 # let current_rand = ref 0;;
@@ -417,7 +418,7 @@ val current_rand : int ref = {contents = 0}
 val random : unit -> int = <fun>
 ```
 
-当然，参照也不是什么奇技淫巧，我们也可以通过可变变量的record来实现：
+当然，引用也不是什么奇技淫巧，我们也可以通过可变变量的record来实现：
 
 ```ocaml
 # type 'a ref = { mutable contents: 'a };;
@@ -434,7 +435,7 @@ val ( ! ) : 'a ref -> 'a = <fun>
 val ( := ) : 'a ref -> 'a -> unit = <fun>
 ```
 
-在一些特殊情况下，你需要储存一些多态的函数在数据结构中，以保证它的多态。但是，OCaml不允许没有用户提供的类型声明。这时候你可以使用多态的类型来达到这个目的：
+在一些特殊情况下，你需要储存一些多态的函数在数据结构中，以保证它的多态。但是，OCaml不允许没有类型声明的值，这时候你可以使用多态的类型来达到这个目的：
 
 ```ocaml
 # type idref = { mutable id: 'a. 'a -> 'a };;
@@ -465,7 +466,7 @@ called id
 
 ## 1.6  异常
 
-OCaml 提供异常来作为信号，应对非常规的情况。异常同样也可以用在一些远程请求控制结构上。异常通过exception构造器构造，通过raise操作符来发出信号。举个例子，下面的函数对空list进行了处理：
+OCaml 提供异常来作为信号，以应对非常规的情况。异常同样也可以用在一些远程请求控制结构上。异常通过`exception`构造器构造，通过`raise`操作符来发出信号。举个例子，下面的函数对空`list`进行了处理：
 
 ```ocaml
 # exception Empty_list;;
@@ -490,7 +491,7 @@ val head : 'a list -> 'a = <fun>
 Exception: Empty_list.
 ```
 
-异常被用于整个标准库，用来警示那些库函数不能正常完成的情况。举个例子，List.assoc 函数，返回在pair list中指定键的值，如果没有找到，就会有异常：Not_found：
+异常被用于整个标准库，用来警示那些库函数不能正常完成的情况。举个例子，`List.assoc` 函数，返回在pair list中指定键的值，如果没有找到，就会有异常：`Not_found`：
 
 ```ocaml
 # List.assoc 1 [(0, "zero"); (1, "one")];;
@@ -502,7 +503,7 @@ Exception: Empty_list.
 Exception: Not_found.
 ```
 
-异常可以被try关键字捕获：
+异常可以被`try`关键字捕获：
 
 ```ocaml
 # let name_of_binary_digit digit =
@@ -523,7 +524,7 @@ val name_of_binary_digit : int -> string = <fun>
 - : string = "not a binary digit"
 ```
 
-with部分实际上还是普通的对异常值的模式匹配，我们可以通过下面这种方式来捕获所有异常，进行操作，最终再raise异常：
+`with`部分实际上还是一般的对异常值进行模式匹配，我们可以通过下面这种方式来捕获所有异常，进行操作，最终再raise异常：
 
 ```ocaml
 # let temporarily_set_reference ref newval funct =
@@ -541,7 +542,7 @@ val temporarily_set_reference : 'a ref -> 'a -> (unit -> 'b) -> 'b = <fun>
 
 ## 1.7   表达式词法分析（*）
 
-我们将以一些更具代表性的例子来解释OCaml的词法分析：对于包含变量的格式操作，下列是描述符的定义：
+我们将以更具代表性的例子来解释OCaml中词法分析的编写：我们将编写一个计算方程的程序，下列是将会用到的符号定义：
 
 ```ocaml
 # type expression =
@@ -561,11 +562,10 @@ type expression =
   | Quot of expression * expression
 ```
 
-我们首先定义了一个variant来对应变量和词性之间的关系，为了简单，我们把环境用list来表示：
+我们首先定义了一个变体来对应变量和词性之间的关系，为了简单，我们把未知数的上下文用一个list来表示：
 
 ```ocaml
 # exception Unbound_variable of string;;
-
 exception Unbound_variable of string
 ```
 
@@ -587,7 +587,7 @@ val eval : (string * float) list -> expression -> float = <fun>
 - : float = 9.42
 ```
 
-对于正式的符号解析，我们定义了一个派生表达式来针对dv进行处理：
+在符号解析部分，我们通过定义一个递归函数来针对`dv`进行处理：
 
 ```ocaml
 # let rec deriv exp dv =
@@ -612,7 +612,7 @@ Quot (Diff (Prod (Const 0., Var "x"), Prod (Const 1., Const 1.)),
 
 ## 1.8  漂亮的输出
 
-在上面的例子中，我们有了抽象的符号表达，但是这些符号表达使得表达式变得生硬难懂，我们需要一个打印函数来吧这些抽象符号转换为我们便于理解的数学表达式（例如 2*x+1）
+在上面的例子中，我们将符号抽象表达，但是这些符号表达使得表达式变得生硬难懂，我们需要一个打印函数来将这些抽象符号转换为我们便于理解的数学表达式（例如 2*x+1）
 
 在打印函数中，我们将优先级规则引入，来避免一些没有必要的圆括号。在最后，产出的表达式将会有着更少的括号：
 
@@ -681,7 +681,7 @@ main ();;
 
 ```
 
-Sys.argv 是一个包含命令行参数的数组，Sys.argv.(1)代表第一个参数。下面这个例子展示了程序通过命令行编译运行。
+`Sys.argv` 是一个包含命令行参数的数组，`Sys.argv.(1)`代表第一个参数。下面这个例子展示了程序通过命令行编译运行。
 
 ```bash
 $ ocamlc -o fib fib.ml
@@ -691,4 +691,4 @@ $ ./fib 20
 10946
 ```
 
-更多复杂的独立OCaml程序，包含多个源文件，引入库函数等将会在后面的文章里面介绍，第9和12张解释了怎样使用批编译指令ocamlc和ocamlopt。多文件的OCaml项目可以通过使用第三方的构建系统来编译，例如：[ocamlbuild](https://github.com/ocaml/ocamlbuild/) 。
+更多复杂的独立OCaml程序，包含多个源文件，引入库函数等将会在后面的文章里面介绍，第9和12张解释了怎样使用批编译指令ocamlc和ocamlopt。多文件的OCaml项目可以通过使用第三方的构建系统来编译，例如：[ocamlbuild](https://github.com/ocaml/ocamlbuild/) 
